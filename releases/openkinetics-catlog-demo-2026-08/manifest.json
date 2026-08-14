@@ -1,0 +1,79 @@
+{
+  "api_lookups": {
+    "pubchem": {
+      "endpoint_template": "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{name}/property/CanonicalSMILES,IsomericSMILES,InChIKey,IUPACName,MolecularFormula/JSON",
+      "purpose": "substrate SMILES, InChIKey, CID, formula"
+    },
+    "uniprot": {
+      "endpoint_template": "https://rest.uniprot.org/uniprotkb/{accession}.fasta",
+      "purpose": "protein sequences"
+    }
+  },
+  "attribution": {
+    "catlog": "Data curated by CatLog collaborators, served by OpenKinetics.",
+    "redistribution_note": "Demo sample for data.openkinetics.org planning; confirm final CatLog redistribution/license terms before public release.",
+    "temporary_citation": "Sajeevan et al., Robust Prediction of Enzyme Variant Kinetics with RealKcat, bioRxiv 2025, DOI 10.1101/2025.02.10.637555."
+  },
+  "candidate_rows_passing_local_filters": 47459,
+  "counts": {
+    "datapoints": 100,
+    "rows_with_both_kcat_and_km": 99,
+    "rows_with_kcat": 99,
+    "rows_with_km": 100,
+    "unique_ec_numbers": 51,
+    "unique_sequences": 71,
+    "unique_substrates": 83
+  },
+  "download_note": "Large embeddings and Pseq2Sites artifacts are stored as server files keyed by sequence_id. The demo release builder includes them in zip bundles when the files exist.",
+  "generated_at": "2026-08-10T11:06:25Z",
+  "record_count": 100,
+  "release_id": "openkinetics-catlog-demo-2026-08",
+  "schema": {
+    "notes": [
+      "Protein sequences are fetched from UniProt by primary_uniprot_id.",
+      "Substrate structures are fetched from PubChem by substrate_name.",
+      "PMID/DOI lists are not present in catlog-table.jsonl.gz; only counts are included.",
+      "Verification notes and raw source envelopes are not present in catlog-table.jsonl.gz.",
+      "Embeddings and pseq2sites scores are represented by join keys, not computed vectors/scores."
+    ],
+    "required_per_datapoint": [
+      "record_key",
+      "measurement_key",
+      "measurement_id",
+      "review_key",
+      "enzyme",
+      "sequence",
+      "substrate",
+      "measurements",
+      "assay_conditions",
+      "provenance",
+      "evidence",
+      "demo_splits",
+      "demo_artifact_keys"
+    ]
+  },
+  "source": {
+    "input_file": "catlog-table.jsonl.gz",
+    "input_path": "/Users/mrsalwer/Downloads/catlog-table.jsonl.gz",
+    "input_sha256": "220a4140caed198aaec7b56688b67009b1deca161e09913fcdfdc011214e4e2c",
+    "source_kind": "CatLog flat table export",
+    "source_limitations": [
+      "The table export does not include raw source envelopes.",
+      "The table export does not include full PMID/DOI lists.",
+      "The table export does not include verification notes.",
+      "Protein sequences and substrate structures were joined from public APIs."
+    ]
+  },
+  "source_db_counts": {
+    "brenda": 15,
+    "oed": 83,
+    "uniprot": 2
+  },
+  "title": "OpenKinetics Data demo sample from CatLog table export",
+  "verification_status_counts": {
+    "corrected": 88,
+    "manual_review_required": 9,
+    "unverified": 2,
+    "verified": 1
+  }
+}

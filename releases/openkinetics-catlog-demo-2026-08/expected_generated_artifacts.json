@@ -1,0 +1,11 @@
+{
+  "embeddings": [
+    "embeddings/esm2/sequence_embeddings.npz",
+    "embeddings/esmc/sequence_embeddings.npz",
+    "embeddings/prot_t5/sequence_embeddings.npz"
+  ],
+  "join_key": "sequence_id",
+  "pseq2sites": [
+    "pseq2sites/binding_sites_by_sequence_id.tsv.gz"
+  ]
+}
