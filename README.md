@@ -52,20 +52,52 @@ npm run dev
 The frontend expects the Django API at `http://localhost:8001` unless
 `VITE_API_BASE_URL` is set.
 
-## Production Layout
+## Docker Deployment
 
-Recommended server path:
+Production is expected to run from:
 
 ```text
-/home/saleh/data-openkinetics/
-  backend/
-  frontend/
-  releases/
-  data/
-  scripts/
+/home/saleh/openkinetics-data
 ```
 
-Large release files and zip bundles should be served directly by Nginx from the
-`releases/` directory. Django stores searchable metadata and returns file URLs,
-checksums, and release manifests.
+The Docker setup builds two images:
 
+- `backend`: Django + Gunicorn on port `8010` inside the Compose network.
+- `frontend`: Vite build served by Nginx on host port `8082`, or the bind
+  address set by `OPENKINETICS_FRONTEND_BIND`.
+
+Persistent state lives on the server and is bind-mounted into containers:
+
+- `./runtime:/data/runtime` stores the SQLite database.
+- `./releases:/data/releases` stores release files and zip downloads.
+- `/home/saleh/webKinPred/media/sequence_info:/sequence_info:ro` exposes
+  existing predictor sequence artifacts without copying them.
+
+Create `.env` from `.env.example`. On production, set
+`OPENKINETICS_FRONTEND_BIND=10.1.2.12:8082`, then run:
+
+```bash
+mkdir -p runtime releases
+docker compose build
+docker compose run --rm backend python backend/manage.py migrate
+docker compose run --rm backend python scripts/build_release_files.py
+docker compose run --rm backend python scripts/build_sequence_artifact_bundles.py
+docker compose run --rm backend python backend/manage.py import_demo_release
+docker compose up -d
+```
+
+The frontend container serves the React app, proxies `/api/`, `/admin/`, and
+`/sequence-artifacts/` to Django, and serves `/releases/` from the mounted
+release directory.
+
+Sequence artifact files are keyed by `cache_sequence_id`, matching the predictor
+cache convention from `seqmap.sqlite3` where possible and otherwise using
+`sha256(sequence)[:12]`. Per-record artifact downloads point to mounted `.npy`
+files such as:
+
+```text
+/sequence_info/esm2_layer_26/residue_vecs/{cache_sequence_id}.npy
+/sequence_info/esmc_layer_32/residue_vecs/{cache_sequence_id}.npy
+/sequence_info/prot_t5_layer_19/residue_vecs/{cache_sequence_id}.npy
+/sequence_info/pseq2sites_scores/{cache_sequence_id}.npy
+```

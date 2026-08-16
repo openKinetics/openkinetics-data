@@ -1,5 +1,7 @@
 """JSON serializers for the public API."""
 
+from .sequence_artifacts import sequence_artifacts_payload
+
 
 def metric_payload(value, unit):
     return {
@@ -12,6 +14,7 @@ def metric_payload(value, unit):
 def sequence_payload(sequence, include_sequence=False):
     payload = {
         "sequence_id": sequence.sequence_id,
+        "cache_sequence_id": sequence.cache_sequence_id,
         "primary_uniprot_id": sequence.primary_uniprot_id,
         "length": sequence.length,
         "source": sequence.source,
@@ -119,9 +122,12 @@ def measurement_detail(measurement):
             },
             "splits": split_payload(measurement),
             "artifact_keys": {
-                "embedding_key": measurement.sequence.sequence_id,
-                "binding_site_prediction_key": measurement.sequence.sequence_id,
+                "sequence_id": measurement.sequence.sequence_id,
+                "cache_sequence_id": measurement.sequence.cache_sequence_id,
+                "embedding_key": measurement.sequence.cache_sequence_id,
+                "binding_site_prediction_key": measurement.sequence.cache_sequence_id,
             },
+            "sequence_artifacts": sequence_artifacts_payload(measurement.sequence),
         }
     )
     return payload
@@ -157,4 +163,3 @@ def artifact_payload(artifact):
         "available": artifact.available,
         "metadata": artifact.metadata,
     }
-

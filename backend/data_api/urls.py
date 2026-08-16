@@ -12,7 +12,11 @@ urlpatterns = [
     path("search/", views.search, name="search"),
     path("facets/", views.facets, name="facets"),
     path("sequences/<str:sequence_id>/", views.sequence_detail, name="sequence-detail"),
+    path(
+        "sequences/<str:sequence_id>/artifacts/<str:artifact_key>/",
+        views.sequence_artifact_download,
+        name="sequence-artifact-download",
+    ),
     path("substrates/<str:substrate_id>/", views.substrate_detail, name="substrate-detail"),
     path("downloads/", views.downloads, name="downloads"),
 ]
-

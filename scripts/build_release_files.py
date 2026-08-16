@@ -12,7 +12,11 @@ from pathlib import Path
 
 
 DEFAULT_SAMPLE = "data/sample/openkinetics_demo_100.json"
-DEFAULT_RELEASES_DIR = "releases"
+DEFAULT_RELEASES_DIR = os.environ.get("OPENKINETICS_RELEASES_ROOT", "releases")
+
+
+def sequence_cache_id(sequence):
+    return hashlib.sha256(sequence.encode("utf-8")).hexdigest()[:12]
 
 
 def ensure_dir(path):
@@ -37,7 +41,7 @@ def write_jsonl_gz(path, rows):
 def write_csv_gz(path, rows, fieldnames):
     ensure_dir(path)
     with gzip.open(path, "wt", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         for row in rows:
             writer.writerow({field: row.get(field) for field in fieldnames})
@@ -46,7 +50,7 @@ def write_csv_gz(path, rows, fieldnames):
 def write_csv(path, rows, fieldnames):
     ensure_dir(path)
     with open(path, "w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         for row in rows:
             writer.writerow({field: row.get(field) for field in fieldnames})
@@ -82,6 +86,7 @@ def flat_measurement(datapoint):
         "organism": enzyme.get("organism"),
         "primary_uniprot_id": enzyme.get("primary_uniprot_id"),
         "sequence_id": sequence.get("sequence_id"),
+        "cache_sequence_id": sequence.get("cache_sequence_id") or sequence_cache_id(sequence.get("sequence")),
         "sequence_length": sequence.get("length"),
         "sequence_variant_status": sequence.get("sequence_variant_status"),
         "mutation_signature": sequence.get("mutation_signature"),
@@ -120,6 +125,7 @@ def sequence_rows(datapoints):
         enzyme = row["enzyme"]
         seen[sequence["sequence_id"]] = {
             "sequence_id": sequence["sequence_id"],
+            "cache_sequence_id": sequence.get("cache_sequence_id") or sequence_cache_id(sequence.get("sequence")),
             "primary_uniprot_id": enzyme.get("primary_uniprot_id"),
             "length": sequence.get("length"),
             "sequence": sequence.get("sequence"),
@@ -165,6 +171,8 @@ def split_rows(datapoints, family, source_key):
                 "measurement_key": row.get("measurement_key"),
                 "measurement_id": row.get("measurement_id"),
                 "sequence_id": row["sequence"]["sequence_id"],
+                "cache_sequence_id": row["sequence"].get("cache_sequence_id")
+                or sequence_cache_id(row["sequence"].get("sequence")),
                 "substrate_id": row["substrate"]["substrate_id"],
                 "pair_id": row["enzyme_substrate_pair"]["pair_id"],
                 "split_family": family,
@@ -224,8 +232,8 @@ def main():
     enriched_manifest = dict(manifest)
     enriched_manifest["schema"] = sample.get("schema", {})
     enriched_manifest["download_note"] = (
-        "Large embeddings and Pseq2Sites artifacts are stored as server files keyed by sequence_id. "
-        "The demo release builder includes them in zip bundles when the files exist."
+        "Large embeddings and Pseq2Sites artifacts are stored as mounted server files keyed by "
+        "cache_sequence_id, matching the predictor seqmap IDs."
     )
     write_json(release_dir / "manifest.json", enriched_manifest)
 
@@ -248,6 +256,7 @@ def main():
         "measurement_key",
         "measurement_id",
         "sequence_id",
+        "cache_sequence_id",
         "substrate_id",
         "pair_id",
         "split_family",
@@ -261,15 +270,35 @@ def main():
         )
 
     expected = {
-        "embeddings": [
-            "embeddings/esm2/sequence_embeddings.npz",
-            "embeddings/esmc/sequence_embeddings.npz",
-            "embeddings/prot_t5/sequence_embeddings.npz",
-        ],
-        "pseq2sites": ["pseq2sites/binding_sites_by_sequence_id.tsv.gz"],
-        "join_key": "sequence_id",
+        "mounted_sequence_info_root": os.environ.get(
+            "OPENKINETICS_SEQUENCE_INFO_ROOT",
+            "/sequence_info",
+        ),
+        "embeddings": {
+            "esm2": os.environ.get("OPENKINETICS_ESM2_RESIDUE_ROOT", "esm2_layer_26/residue_vecs"),
+            "esmc": os.environ.get("OPENKINETICS_ESMC_RESIDUE_ROOT", "esmc_layer_32/residue_vecs"),
+            "prot_t5": os.environ.get(
+                "OPENKINETICS_PROT_T5_RESIDUE_ROOT",
+                "prot_t5_layer_19/residue_vecs",
+            ),
+        },
+        "pseq2sites": os.environ.get("OPENKINETICS_PSEQ2SITES_ROOT", "pseq2sites_scores"),
+        "join_key": "cache_sequence_id",
+        "filename_pattern": "{cache_sequence_id}.npy",
     }
     write_json(release_dir / "expected_generated_artifacts.json", expected)
+
+    for stale_name in [
+        "openkinetics-demo-esm2-residue-vecs.zip",
+        "openkinetics-demo-esmc-residue-vecs.zip",
+        "openkinetics-demo-prot-t5-residue-vecs.zip",
+        "openkinetics-demo-pseq2sites-scores.zip",
+        "openkinetics-demo-embeddings.zip",
+        "openkinetics-demo-pseq2sites.zip",
+    ]:
+        stale_path = release_dir / "downloads" / stale_name
+        if stale_path.exists():
+            stale_path.unlink()
 
     zip_available(
         release_dir / "downloads/openkinetics-demo-measurements.zip",
@@ -291,28 +320,6 @@ def main():
             "splits/pair_exclusive.csv",
         ],
     )
-    if all((release_dir / rel_path).exists() for rel_path in expected["embeddings"]):
-        zip_available(
-            release_dir / "downloads/openkinetics-demo-embeddings.zip",
-            release_dir,
-            expected["embeddings"] + ["expected_generated_artifacts.json", "manifest.json"],
-        )
-    else:
-        stale = release_dir / "downloads/openkinetics-demo-embeddings.zip"
-        if stale.exists():
-            stale.unlink()
-
-    if all((release_dir / rel_path).exists() for rel_path in expected["pseq2sites"]):
-        zip_available(
-            release_dir / "downloads/openkinetics-demo-pseq2sites.zip",
-            release_dir,
-            expected["pseq2sites"] + ["expected_generated_artifacts.json", "manifest.json"],
-        )
-    else:
-        stale = release_dir / "downloads/openkinetics-demo-pseq2sites.zip"
-        if stale.exists():
-            stale.unlink()
-
     complete_paths = [
         str(path.relative_to(release_dir))
         for path in release_dir.rglob("*")

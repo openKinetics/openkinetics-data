@@ -16,6 +16,7 @@ from data_api.models import (
     SplitAssignment,
     Substrate,
 )
+from data_api.sequence_artifacts import resolve_cache_sequence_id
 
 
 DEFAULT_SAMPLE_PATH = "data/sample/openkinetics_demo_100.json"
@@ -99,9 +100,15 @@ def search_text_for(datapoint):
 def upsert_sequence(datapoint):
     sequence = datapoint["sequence"]
     enzyme = datapoint["enzyme"]
+    cache_sequence_id = (
+        sequence.get("cache_sequence_id")
+        or sequence.get("predictor_cache_sequence_id")
+        or resolve_cache_sequence_id(sequence["sequence"])
+    )
     obj, _created = Sequence.objects.update_or_create(
         sequence_id=sequence["sequence_id"],
         defaults={
+            "cache_sequence_id": cache_sequence_id,
             "primary_uniprot_id": enzyme.get("primary_uniprot_id") or "",
             "sequence": sequence["sequence"],
             "length": sequence.get("length") or len(sequence["sequence"]),
@@ -280,4 +287,3 @@ class Command(BaseCommand):
                 "Imported %s measurements for release %s from %s" % (count, release_id, path)
             )
         )
-

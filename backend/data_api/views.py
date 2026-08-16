@@ -1,11 +1,12 @@
 from collections import defaultdict
 
 from django.core.paginator import Paginator
-from django.db.models import Count, Q
-from django.http import JsonResponse
+from django.db.models import Count
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 
 from .models import Measurement, Release, ReleaseArtifact, Sequence, Substrate
+from .sequence_artifacts import SEQUENCE_ARTIFACT_DEFINITIONS, artifact_path
 from .serializers import (
     artifact_payload,
     measurement_detail,
@@ -181,6 +182,26 @@ def sequence_detail(_request, sequence_id):
     return JsonResponse({"sequence": sequence_payload(sequence, include_sequence=True)})
 
 
+def sequence_artifact_download(_request, sequence_id, artifact_key):
+    sequence = get_object_or_404(Sequence, sequence_id=sequence_id)
+    definition = SEQUENCE_ARTIFACT_DEFINITIONS.get(artifact_key)
+    if not definition:
+        raise Http404("Unknown sequence artifact.")
+    cache_sequence_id = sequence.cache_sequence_id
+    if not cache_sequence_id:
+        raise Http404("No predictor cache sequence ID is available for this sequence.")
+    path = artifact_path(cache_sequence_id, artifact_key)
+    if not path or not path.exists() or not path.is_file():
+        raise Http404("Sequence artifact is not available.")
+    filename = "%s_%s" % (cache_sequence_id, definition["filename_suffix"])
+    return FileResponse(
+        open(path, "rb"),
+        as_attachment=True,
+        filename=filename,
+        content_type=definition["content_type"],
+    )
+
+
 def substrate_detail(_request, substrate_id):
     substrate = get_object_or_404(Substrate, substrate_id=substrate_id)
     return JsonResponse({"substrate": substrate_payload(substrate)})
@@ -244,4 +265,3 @@ def facets(_request):
 def search(request):
     # Alias kept explicit for clients that expect a dedicated search route.
     return measurements(request)
-

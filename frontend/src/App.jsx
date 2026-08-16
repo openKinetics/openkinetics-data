@@ -404,6 +404,7 @@ function RecordPage() {
         <Panel title="Protein sequence">
           <dl className="key-values">
             <dt>Sequence ID</dt><dd>{row.sequence.sequence_id}</dd>
+            <dt>Cache ID</dt><dd>{row.sequence.cache_sequence_id}</dd>
             <dt>UniProt</dt>
             <dd>
               <a href={row.sequence.source_url}>{row.enzyme.primary_uniprot_id}</a>
@@ -412,6 +413,32 @@ function RecordPage() {
             <dt>Variant</dt><dd>{row.sequence.sequence_variant_status}</dd>
           </dl>
           <pre className="sequence-block">{row.sequence.sequence}</pre>
+        </Panel>
+
+        <Panel title="Sequence artifacts">
+          <div className="artifact-list">
+            {(row.sequence_artifacts || []).map((artifact) => (
+              <article className="artifact-row" key={artifact.artifact_key}>
+                <div>
+                  <h3>{artifact.label}</h3>
+                  <p>{artifact.description}</p>
+                  <small>
+                    {artifact.available
+                      ? `${formatBytes(artifact.size_bytes)} · ${artifact.relative_cache_path}`
+                      : `Awaiting ${artifact.cache_sequence_id}.npy`}
+                  </small>
+                </div>
+                {artifact.available ? (
+                  <a className="icon-button" href={artifact.url}>
+                    <Download size={16} aria-hidden="true" />
+                    Download
+                  </a>
+                ) : (
+                  <span className="pending-pill">Awaiting file</span>
+                )}
+              </article>
+            ))}
+          </div>
         </Panel>
 
         <Panel title="Substrate">
@@ -581,4 +608,3 @@ records = requests.get(
 export default function App() {
   return <Layout />;
 }
-

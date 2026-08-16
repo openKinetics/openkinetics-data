@@ -8,9 +8,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_e87418efa8d2d149",
-        "embedding_key": "seq_e87418efa8d2d149",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "e87418efa8d2",
+        "embedding_key": "e87418efa8d2",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -31,6 +31,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "e87418efa8d2",
         "pair_id": "pair_a5e5072fae941376",
         "sequence_id": "seq_e87418efa8d2d149",
         "substrate_id": "pubchem:7410"
@@ -82,6 +83,7 @@
       "record_key": "001fa3cdda33867c",
       "review_key": "8f4c59ef51b9595c",
       "sequence": {
+        "cache_sequence_id": "e87418efa8d2",
         "fasta_header": "tr|B7T912|B7T912_PSEPU 4-hydroxyacetophenone monooxygenase OS=Pseudomonas putida OX=303 GN=hapE PE=3 SV=1",
         "has_sequence": true,
         "length": 640,
@@ -118,9 +120,9 @@
         "temperature_k": 338.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_52e419e89f428c4a",
-        "embedding_key": "seq_52e419e89f428c4a",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "52e419e89f42",
+        "embedding_key": "52e419e89f42",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -141,6 +143,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "52e419e89f42",
         "pair_id": "pair_cfa306e16fe9b286",
         "sequence_id": "seq_52e419e89f428c4a",
         "substrate_id": "pubchem:439507"
@@ -192,6 +195,7 @@
       "record_key": "00210490a5c053d4",
       "review_key": "f987d0bc1547b1dc",
       "sequence": {
+        "cache_sequence_id": "52e419e89f42",
         "fasta_header": "tr|A4XHV7|A4XHV7_CALS8 L-rhamnose isomerase OS=Caldicellulosiruptor saccharolyticus (strain ATCC 43494 / DSM 8903 / Tp8T 6331) OX=351627 GN=rhaA PE=3 SV=1",
         "has_sequence": true,
         "length": 426,
@@ -228,9 +232,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_2949f31cc586cd4e",
-        "embedding_key": "seq_2949f31cc586cd4e",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "2949f31cc586",
+        "embedding_key": "2949f31cc586",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -251,6 +255,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "2949f31cc586",
         "pair_id": "pair_ae96c7569997869f",
         "sequence_id": "seq_2949f31cc586cd4e",
         "substrate_id": "pubchem:5961"
@@ -302,6 +307,7 @@
       "record_key": "02b3407af85e9004",
       "review_key": "fb0c9828f5cb7e59",
       "sequence": {
+        "cache_sequence_id": "2949f31cc586",
         "fasta_header": "tr|A4I213|A4I213_LEIIN Putative asparagine synthetase a OS=Leishmania infantum OX=5671 GN=LINJ_26_0790 PE=4 SV=1",
         "has_sequence": true,
         "length": 353,
@@ -338,9 +344,9 @@
         "temperature_k": 296.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_5720e38f589a570c",
-        "embedding_key": "seq_5720e38f589a570c",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "5720e38f589a",
+        "embedding_key": "5720e38f589a",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -361,6 +367,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "5720e38f589a",
         "pair_id": "pair_32757eeb461921c3",
         "sequence_id": "seq_5720e38f589a570c",
         "substrate_id": "pubchem:641637"
@@ -412,6 +419,7 @@
       "record_key": "03115c38e0a6c7ab",
       "review_key": "bbd7a710972108fb",
       "sequence": {
+        "cache_sequence_id": "5720e38f589a",
         "fasta_header": "sp|P70994|4OT_BACSU 2-hydroxymuconate tautomerase OS=Bacillus subtilis (strain 168) OX=224308 GN=ywhB PE=1 SV=3",
         "has_sequence": true,
         "length": 62,
@@ -448,9 +456,9 @@
         "temperature_k": 328.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_5df5588f23339e6a",
-        "embedding_key": "seq_5df5588f23339e6a",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "5df5588f2333",
+        "embedding_key": "5df5588f2333",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -471,6 +479,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "5df5588f2333",
         "pair_id": "pair_9db956fb7508e0ad",
         "sequence_id": "seq_5df5588f23339e6a",
         "substrate_id": "pubchem:87642"
@@ -522,6 +531,7 @@
       "record_key": "03be2e90e12574f0",
       "review_key": "34127a7340676358",
       "sequence": {
+        "cache_sequence_id": "5df5588f2333",
         "fasta_header": "tr|Q8TLW1|Q8TLW1_METAC AMP-binding protein OS=Methanosarcina acetivorans (strain ATCC 35395 / DSM 2834 / JCM 12185 / C2A) OX=188937 GN=MA_2912 PE=1 SV=1",
         "has_sequence": true,
         "length": 560,
@@ -558,9 +568,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_c13ccd99f15db1dc",
-        "embedding_key": "seq_c13ccd99f15db1dc",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "c13ccd99f15d",
+        "embedding_key": "c13ccd99f15d",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -581,6 +591,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "c13ccd99f15d",
         "pair_id": "pair_0ca390e466d7ac27",
         "sequence_id": "seq_c13ccd99f15db1dc",
         "substrate_id": "pubchem:768"
@@ -632,6 +643,7 @@
       "record_key": "047bfd6b5ae237fb",
       "review_key": "a537feb577fe49bb",
       "sequence": {
+        "cache_sequence_id": "c13ccd99f15d",
         "fasta_header": "tr|I1L6I6|I1L6I6_SOYBN Cysteine synthase OS=Glycine max OX=3847 GN=GLYMA_09G258000 PE=1 SV=1",
         "has_sequence": true,
         "length": 373,
@@ -668,9 +680,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_8206618159bbeda9",
-        "embedding_key": "seq_8206618159bbeda9",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "8206618159bb",
+        "embedding_key": "8206618159bb",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -691,6 +703,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "8206618159bb",
         "pair_id": "pair_db0d5de4a81e5675",
         "sequence_id": "seq_8206618159bbeda9",
         "substrate_id": "pubchem:6024"
@@ -742,6 +755,7 @@
       "record_key": "0483e2cc85a1f831",
       "review_key": "77429674625682fc",
       "sequence": {
+        "cache_sequence_id": "8206618159bb",
         "fasta_header": "tr|B2BSN6|B2BSN6_AEREN Beta-lactamase OS=Aeromonas enteropelogenes OX=29489 GN=ampC PE=3 SV=1",
         "has_sequence": true,
         "length": 382,
@@ -778,9 +792,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_dbcade610a0e9257",
-        "embedding_key": "seq_dbcade610a0e9257",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "dbcade610a0e",
+        "embedding_key": "dbcade610a0e",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -801,6 +815,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "dbcade610a0e",
         "pair_id": "pair_bd2a11f53cb9eac2",
         "sequence_id": "seq_dbcade610a0e9257",
         "substrate_id": "pubchem:778"
@@ -852,6 +867,7 @@
       "record_key": "055e053374fdee82",
       "review_key": "1dc6fdabe882c8cb",
       "sequence": {
+        "cache_sequence_id": "dbcade610a0e",
         "fasta_header": "sp|P13254|MEGL_PSEPU L-methionine gamma-lyase OS=Pseudomonas putida OX=303 GN=mdeA PE=1 SV=2",
         "has_sequence": true,
         "length": 398,
@@ -888,9 +904,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_ccd0ba9ef3f81291",
-        "embedding_key": "seq_ccd0ba9ef3f81291",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "ccd0ba9ef3f8",
+        "embedding_key": "ccd0ba9ef3f8",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -911,6 +927,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "ccd0ba9ef3f8",
         "pair_id": "pair_bd9066f01ba1e39c",
         "sequence_id": "seq_ccd0ba9ef3f81291",
         "substrate_id": "pubchem:5862"
@@ -962,6 +979,7 @@
       "record_key": "08ff5772192e298b",
       "review_key": "2daf61a2c216a0ac",
       "sequence": {
+        "cache_sequence_id": "ccd0ba9ef3f8",
         "fasta_header": "sp|P16659|SYP_ECOLI Proline--tRNA ligase OS=Escherichia coli (strain K12) OX=83333 GN=proS PE=1 SV=4",
         "has_sequence": true,
         "length": 572,
@@ -998,9 +1016,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_fe526db88dc95981",
-        "embedding_key": "seq_fe526db88dc95981",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "fe526db88dc9",
+        "embedding_key": "fe526db88dc9",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -1021,6 +1039,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "fe526db88dc9",
         "pair_id": "pair_13907c432134f9b3",
         "sequence_id": "seq_fe526db88dc95981",
         "substrate_id": "pubchem:6031"
@@ -1072,6 +1091,7 @@
       "record_key": "0a4d0652ccd511be",
       "review_key": "6681ec726eb200bf",
       "sequence": {
+        "cache_sequence_id": "fe526db88dc9",
         "fasta_header": "sp|P10963|PCKA_YEAST Phosphoenolpyruvate carboxykinase (ATP) OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=PCK1 PE=1 SV=2",
         "has_sequence": true,
         "length": 549,
@@ -1108,9 +1128,9 @@
         "temperature_k": 343.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_a5573530ce86e615",
-        "embedding_key": "seq_a5573530ce86e615",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "a5573530ce86",
+        "embedding_key": "a5573530ce86",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -1131,6 +1151,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "a5573530ce86",
         "pair_id": "pair_6251565037520691",
         "sequence_id": "seq_a5573530ce86e615",
         "substrate_id": "pubchem:90428"
@@ -1182,6 +1203,7 @@
       "record_key": "0b155a8a11ac7f38",
       "review_key": "f4f77f05b6e06ad0",
       "sequence": {
+        "cache_sequence_id": "a5573530ce86",
         "fasta_header": "sp|A3E7Z6|DLYKI_COHLA D-lyxose ketol-isomerase OS=Cohnella laeviribosi OX=380174 PE=1 SV=1",
         "has_sequence": true,
         "length": 182,
@@ -1218,9 +1240,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_55b628f467711b2c",
-        "embedding_key": "seq_55b628f467711b2c",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "55b628f46771",
+        "embedding_key": "55b628f46771",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -1241,6 +1263,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "55b628f46771",
         "pair_id": "pair_b47d7c087c629eba",
         "sequence_id": "seq_55b628f467711b2c",
         "substrate_id": "pubchem:448165"
@@ -1292,6 +1315,7 @@
       "record_key": "0bcfb5c18160b40f",
       "review_key": "369dc98b284c4ec2",
       "sequence": {
+        "cache_sequence_id": "55b628f46771",
         "fasta_header": "sp|Q5LH66|CEEP_BACFN Cellobiose 2-epimerase OS=Bacteroides fragilis (strain ATCC 25285 / DSM 2151 / CCUG 4856 / JCM 11019 / LMG 10263 / NCTC 9343 / Onslow / VPI 2553 / EN-2) OX=272559 GN=bfce PE=1 SV=1",
         "has_sequence": true,
         "length": 392,
@@ -1328,9 +1352,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_45a56345f534109f",
-        "embedding_key": "seq_45a56345f534109f",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "45a56345f534",
+        "embedding_key": "45a56345f534",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -1351,6 +1375,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "45a56345f534",
         "pair_id": "pair_44f227dfe0d4c852",
         "sequence_id": "seq_45a56345f534109f",
         "substrate_id": "pubchem:5481173"
@@ -1402,6 +1427,7 @@
       "record_key": "0dae932b5b70bacb",
       "review_key": "7bdd74ce443b532c",
       "sequence": {
+        "cache_sequence_id": "45a56345f534",
         "fasta_header": "tr|Q5U807|Q5U807_PSEAI beta-lactamase OS=Pseudomonas aeruginosa OX=287 GN=IMP-18 PE=1 SV=2",
         "has_sequence": true,
         "length": 246,
@@ -1438,9 +1464,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_e5519e2cd7d38438",
-        "embedding_key": "seq_e5519e2cd7d38438",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "e5519e2cd7d3",
+        "embedding_key": "e5519e2cd7d3",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -1461,6 +1487,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "e5519e2cd7d3",
         "pair_id": "pair_80d39ef5c9eb999c",
         "sequence_id": "seq_e5519e2cd7d38438",
         "substrate_id": "pubchem:439208"
@@ -1512,6 +1539,7 @@
       "record_key": "0e02b06661df0394",
       "review_key": "eba21401ed1afe24",
       "sequence": {
+        "cache_sequence_id": "e5519e2cd7d3",
         "fasta_header": "sp|O64530|STR1_ARATH Thiosulfate/3-mercaptopyruvate sulfurtransferase 1, mitochondrial OS=Arabidopsis thaliana OX=3702 GN=STR1 PE=1 SV=1",
         "has_sequence": true,
         "length": 379,
@@ -1548,9 +1576,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_6db26ce0657676df",
-        "embedding_key": "seq_6db26ce0657676df",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "6db26ce06576",
+        "embedding_key": "6db26ce06576",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -1569,6 +1597,7 @@
         "uniprot_candidate_ids": []
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "6db26ce06576",
         "pair_id": "pair_80ae76bd0784e3a6",
         "sequence_id": "seq_6db26ce0657676df",
         "substrate_id": "pubchem:4462"
@@ -1620,6 +1649,7 @@
       "record_key": "0e7e843835316c2e",
       "review_key": "d25e6098568296f9",
       "sequence": {
+        "cache_sequence_id": "6db26ce06576",
         "fasta_header": "sp|A5F5X0|NQRB_VIBC3 Na(+)-translocating NADH-quinone reductase subunit B OS=Vibrio cholerae serotype O1 (strain ATCC 39541 / Classical Ogawa 395 / O395) OX=345073 GN=nqrB PE=1 SV=1",
         "has_sequence": true,
         "length": 415,
@@ -1656,9 +1686,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_8206618159bbeda9",
-        "embedding_key": "seq_8206618159bbeda9",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "8206618159bb",
+        "embedding_key": "8206618159bb",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -1679,6 +1709,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "8206618159bb",
         "pair_id": "pair_7f36b5de7ba5341c",
         "sequence_id": "seq_8206618159bbeda9",
         "substrate_id": "pubchem:5479539"
@@ -1730,6 +1761,7 @@
       "record_key": "10f8d82e28aecbdb",
       "review_key": "90fb841115180fef",
       "sequence": {
+        "cache_sequence_id": "8206618159bb",
         "fasta_header": "tr|B2BSN6|B2BSN6_AEREN Beta-lactamase OS=Aeromonas enteropelogenes OX=29489 GN=ampC PE=3 SV=1",
         "has_sequence": true,
         "length": 382,
@@ -1766,9 +1798,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_0badd626903d8a66",
-        "embedding_key": "seq_0badd626903d8a66",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "0badd626903d",
+        "embedding_key": "0badd626903d",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -1789,6 +1821,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "0badd626903d",
         "pair_id": "pair_fae95f953309ecd4",
         "sequence_id": "seq_0badd626903d8a66",
         "substrate_id": "pubchem:135398633"
@@ -1840,6 +1873,7 @@
       "record_key": "121af95b49560c4d",
       "review_key": "81128f867525d611",
       "sequence": {
+        "cache_sequence_id": "0badd626903d",
         "fasta_header": "sp|P38502|ACKA_METTE Acetate kinase OS=Methanosarcina thermophila OX=2210 GN=ackA PE=1 SV=1",
         "has_sequence": true,
         "length": 408,
@@ -1876,9 +1910,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_c1a9adb3c8d83ba5",
-        "embedding_key": "seq_c1a9adb3c8d83ba5",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "c1a9adb3c8d8",
+        "embedding_key": "c1a9adb3c8d8",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -1899,6 +1933,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "c1a9adb3c8d8",
         "pair_id": "pair_8d9e1ce3c74c8141",
         "sequence_id": "seq_c1a9adb3c8d83ba5",
         "substrate_id": "pubchem:440041"
@@ -1950,6 +1985,7 @@
       "record_key": "12a1647583eae9e4",
       "review_key": "7ec570e3ad9a1ba5",
       "sequence": {
+        "cache_sequence_id": "c1a9adb3c8d8",
         "fasta_header": "tr|B2CMA5|B2CMA5_STRSU S-ribosylhomocysteine lyase OS=Streptococcus suis OX=1307 GN=luxS PE=1 SV=1",
         "has_sequence": true,
         "length": 160,
@@ -1986,9 +2022,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_4f87243739539649",
-        "embedding_key": "seq_4f87243739539649",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "4f8724373953",
+        "embedding_key": "4f8724373953",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -2009,6 +2045,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "4f8724373953",
         "pair_id": "pair_ff2840cee6ef59eb",
         "sequence_id": "seq_4f87243739539649",
         "substrate_id": "pubchem:13706"
@@ -2060,6 +2097,7 @@
       "record_key": "12e42bda14561dc3",
       "review_key": "eb1a7f6a4fc5b57a",
       "sequence": {
+        "cache_sequence_id": "4f8724373953",
         "fasta_header": "sp|Q3M5Z3|PAL_TRIV2 Phenylalanine ammonia-lyase OS=Trichormus variabilis (strain ATCC 29413 / PCC 7937) OX=240292 GN=Ava_3988 PE=1 SV=1",
         "has_sequence": true,
         "length": 567,
@@ -2096,9 +2134,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_0b75ba607c7258a1",
-        "embedding_key": "seq_0b75ba607c7258a1",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "0b75ba607c72",
+        "embedding_key": "0b75ba607c72",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -2119,6 +2157,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "0b75ba607c72",
         "pair_id": "pair_c6a691ddaa67371c",
         "sequence_id": "seq_0b75ba607c7258a1",
         "substrate_id": "pubchem:6024"
@@ -2170,6 +2209,7 @@
       "record_key": "1333c597db3f8a31",
       "review_key": "91ce97cf97cef318",
       "sequence": {
+        "cache_sequence_id": "0b75ba607c72",
         "fasta_header": "tr|Q8KRJ3|Q8KRJ3_PSEAI beta-lactamase OS=Pseudomonas aeruginosa OX=287 GN=blaVIM-4 PE=1 SV=1",
         "has_sequence": true,
         "length": 266,
@@ -2206,9 +2246,9 @@
         "temperature_k": 295.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_f1cd339c9b51cef7",
-        "embedding_key": "seq_f1cd339c9b51cef7",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "f1cd339c9b51",
+        "embedding_key": "f1cd339c9b51",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -2229,6 +2269,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "f1cd339c9b51",
         "pair_id": "pair_b250c9bbd6b10cae",
         "sequence_id": "seq_f1cd339c9b51cef7",
         "substrate_id": "pubchem:445995"
@@ -2280,6 +2321,7 @@
       "record_key": "137d8fedca99387f",
       "review_key": "8fe0a098b8018827",
       "sequence": {
+        "cache_sequence_id": "f1cd339c9b51",
         "fasta_header": "sp|A6XH05|CINS1_SALFT Cineole synthase 1, chloroplastic OS=Salvia fruticosa OX=268906 GN=CinS1 PE=1 SV=1",
         "has_sequence": true,
         "length": 591,
@@ -2316,9 +2358,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_977ac4ccc3c55ca6",
-        "embedding_key": "seq_977ac4ccc3c55ca6",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "977ac4ccc3c5",
+        "embedding_key": "977ac4ccc3c5",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -2339,6 +2381,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "977ac4ccc3c5",
         "pair_id": "pair_abf0780e3e08c5f7",
         "sequence_id": "seq_977ac4ccc3c55ca6",
         "substrate_id": "pubchem:21412"
@@ -2390,6 +2433,7 @@
       "record_key": "15c24ecd9d4553bc",
       "review_key": "af37b41a30e8239a",
       "sequence": {
+        "cache_sequence_id": "977ac4ccc3c5",
         "fasta_header": "tr|K0CAI2|K0CAI2_ALCDB Hydrolase, alpha/beta fold family, putative OS=Alcanivorax dieselolei (strain DSM 16502 / CGMCC 1.3690 / MCCC 1A00001 / B-5) OX=930169 GN=B5T_00392 PE=4 SV=1",
         "has_sequence": true,
         "length": 295,
@@ -2426,9 +2470,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_86f58c538cc1d318",
-        "embedding_key": "seq_86f58c538cc1d318",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "86f58c538cc1",
+        "embedding_key": "86f58c538cc1",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "test",
@@ -2449,6 +2493,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "86f58c538cc1",
         "pair_id": "pair_3b74c3dadcbce513",
         "sequence_id": "seq_86f58c538cc1d318",
         "substrate_id": "pubchem:1057"
@@ -2500,6 +2545,7 @@
       "record_key": "1ac3edc5c175c09c",
       "review_key": "748147f5eff6effa",
       "sequence": {
+        "cache_sequence_id": "86f58c538cc1",
         "fasta_header": "tr|Q556V8|Q556V8_DICDI Dyp-type peroxidase family protein OS=Dictyostelium discoideum OX=44689 GN=DDB_G0273083 PE=1 SV=1",
         "has_sequence": true,
         "length": 306,
@@ -2536,9 +2582,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_45a56345f534109f",
-        "embedding_key": "seq_45a56345f534109f",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "45a56345f534",
+        "embedding_key": "45a56345f534",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "test",
@@ -2559,6 +2605,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "45a56345f534",
         "pair_id": "pair_0b7840c37ab50a30",
         "sequence_id": "seq_45a56345f534109f",
         "substrate_id": "pubchem:441199"
@@ -2610,6 +2657,7 @@
       "record_key": "1b39c6a131bef6bc",
       "review_key": "28d17ae7350abb44",
       "sequence": {
+        "cache_sequence_id": "45a56345f534",
         "fasta_header": "tr|Q5U807|Q5U807_PSEAI beta-lactamase OS=Pseudomonas aeruginosa OX=287 GN=IMP-18 PE=1 SV=2",
         "has_sequence": true,
         "length": 246,
@@ -2646,9 +2694,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_25748ead19b7cd56",
-        "embedding_key": "seq_25748ead19b7cd56",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "25748ead19b7",
+        "embedding_key": "25748ead19b7",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -2669,6 +2717,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "25748ead19b7",
         "pair_id": "pair_b306b8dc89b3373b",
         "sequence_id": "seq_25748ead19b7cd56",
         "substrate_id": "pubchem:65091"
@@ -2720,6 +2769,7 @@
       "record_key": "1b47b14558472893",
       "review_key": "f8fb972a27bb22f3",
       "sequence": {
+        "cache_sequence_id": "25748ead19b7",
         "fasta_header": "sp|Q97W02|DPO4_SACS2 DNA polymerase IV OS=Saccharolobus solfataricus (strain ATCC 35092 / DSM 1617 / JCM 11322 / P2) OX=273057 GN=dbh PE=1 SV=1",
         "has_sequence": true,
         "length": 352,
@@ -2756,9 +2806,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_83fdf0461cac7420",
-        "embedding_key": "seq_83fdf0461cac7420",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "83fdf0461cac",
+        "embedding_key": "83fdf0461cac",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "test",
@@ -2779,6 +2829,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "83fdf0461cac",
         "pair_id": "pair_75605e7323c3c463",
         "sequence_id": "seq_83fdf0461cac7420",
         "substrate_id": "pubchem:5810"
@@ -2830,6 +2881,7 @@
       "record_key": "1c2a3a35c562d468",
       "review_key": "f851b1287cd39268",
       "sequence": {
+        "cache_sequence_id": "83fdf0461cac",
         "fasta_header": "sp|B9R4E3|4HYPE_ROSAD 4-hydroxyproline 2-epimerase OS=Roseibium alexandrii (strain DSM 17067 / NCIMB 14079 / DFL-11) OX=244592 GN=SADFL11_2813 PE=1 SV=1",
         "has_sequence": true,
         "length": 327,
@@ -2866,9 +2918,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_0b75ba607c7258a1",
-        "embedding_key": "seq_0b75ba607c7258a1",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "0b75ba607c72",
+        "embedding_key": "0b75ba607c72",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -2889,6 +2941,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "0b75ba607c72",
         "pair_id": "pair_98f48d5e5fdf94f3",
         "sequence_id": "seq_0b75ba607c7258a1",
         "substrate_id": "pubchem:104838"
@@ -2940,6 +2993,7 @@
       "record_key": "1dfaa050fe530a8d",
       "review_key": "a0cd7b2131ac7a2d",
       "sequence": {
+        "cache_sequence_id": "0b75ba607c72",
         "fasta_header": "tr|Q8KRJ3|Q8KRJ3_PSEAI beta-lactamase OS=Pseudomonas aeruginosa OX=287 GN=blaVIM-4 PE=1 SV=1",
         "has_sequence": true,
         "length": 266,
@@ -2976,9 +3030,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_fe526db88dc95981",
-        "embedding_key": "seq_fe526db88dc95981",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "fe526db88dc9",
+        "embedding_key": "fe526db88dc9",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -2999,6 +3053,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "fe526db88dc9",
         "pair_id": "pair_a1da37a942186988",
         "sequence_id": "seq_fe526db88dc95981",
         "substrate_id": "pubchem:135398643"
@@ -3050,6 +3105,7 @@
       "record_key": "205427d75ab62f3e",
       "review_key": "5eecbf4f8c60120c",
       "sequence": {
+        "cache_sequence_id": "fe526db88dc9",
         "fasta_header": "sp|P10963|PCKA_YEAST Phosphoenolpyruvate carboxykinase (ATP) OS=Saccharomyces cerevisiae (strain ATCC 204508 / S288c) OX=559292 GN=PCK1 PE=1 SV=2",
         "has_sequence": true,
         "length": 549,
@@ -3086,9 +3142,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_cc9657ed9d24be73",
-        "embedding_key": "seq_cc9657ed9d24be73",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "cc9657ed9d24",
+        "embedding_key": "cc9657ed9d24",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -3109,6 +3165,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "cc9657ed9d24",
         "pair_id": "pair_85db767c4eee3618",
         "sequence_id": "seq_cc9657ed9d24be73",
         "substrate_id": "pubchem:445049"
@@ -3160,6 +3217,7 @@
       "record_key": "213dde55a389b080",
       "review_key": "8bbcc4b40ac294c9",
       "sequence": {
+        "cache_sequence_id": "cc9657ed9d24",
         "fasta_header": "sp|P41222|PTGDS_HUMAN Prostaglandin-H2 D-isomerase OS=Homo sapiens OX=9606 GN=PTGDS PE=1 SV=1",
         "has_sequence": true,
         "length": 190,
@@ -3196,9 +3254,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_164475ea27a89e42",
-        "embedding_key": "seq_164475ea27a89e42",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "164475ea27a8",
+        "embedding_key": "164475ea27a8",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -3219,6 +3277,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "164475ea27a8",
         "pair_id": "pair_ac6d81077513dc0b",
         "sequence_id": "seq_164475ea27a89e42",
         "substrate_id": "pubchem:6134"
@@ -3270,6 +3329,7 @@
       "record_key": "21daa4dc802ef06d",
       "review_key": "5f715cd3346ce92a",
       "sequence": {
+        "cache_sequence_id": "164475ea27a8",
         "fasta_header": "sp|P0DKY4|CEEP_RUMAL Cellobiose 2-epimerase OS=Ruminococcus albus OX=1264 GN=ce-ne1 PE=1 SV=1",
         "has_sequence": true,
         "length": 389,
@@ -3306,9 +3366,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_8ea512d1c5e51702",
-        "embedding_key": "seq_8ea512d1c5e51702",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "8ea512d1c5e5",
+        "embedding_key": "8ea512d1c5e5",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -3329,6 +3389,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "8ea512d1c5e5",
         "pair_id": "pair_fc150bc4929a09cc",
         "sequence_id": "seq_8ea512d1c5e51702",
         "substrate_id": "pubchem:439278"
@@ -3380,6 +3441,7 @@
       "record_key": "245e0362c0b899d1",
       "review_key": "b5f7f6f84b0ee8c7",
       "sequence": {
+        "cache_sequence_id": "8ea512d1c5e5",
         "fasta_header": "sp|P37689|GPMI_ECOLI 2,3-bisphosphoglycerate-independent phosphoglycerate mutase OS=Escherichia coli (strain K12) OX=83333 GN=gpmI PE=1 SV=1",
         "has_sequence": true,
         "length": 514,
@@ -3416,9 +3478,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_a6ed28bc8365296b",
-        "embedding_key": "seq_a6ed28bc8365296b",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "a6ed28bc8365",
+        "embedding_key": "a6ed28bc8365",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -3439,6 +3501,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "a6ed28bc8365",
         "pair_id": "pair_c8b6df17261dbbcb",
         "sequence_id": "seq_a6ed28bc8365296b",
         "substrate_id": "pubchem:65894"
@@ -3490,6 +3553,7 @@
       "record_key": "24e1652a89eff130",
       "review_key": "984a05a120738627",
       "sequence": {
+        "cache_sequence_id": "a6ed28bc8365",
         "fasta_header": "sp|Q6XEC0|BLO48_KLEPN Beta-lactamase OXA-48 OS=Klebsiella pneumoniae OX=573 GN=OXA-48 PE=1 SV=1",
         "has_sequence": true,
         "length": 265,
@@ -3526,9 +3590,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_e220e6dd43116151",
-        "embedding_key": "seq_e220e6dd43116151",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "e220e6dd4311",
+        "embedding_key": "e220e6dd4311",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -3549,6 +3613,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "e220e6dd4311",
         "pair_id": "pair_bc9c00b655871bd5",
         "sequence_id": "seq_e220e6dd43116151",
         "substrate_id": "pubchem:8101"
@@ -3600,6 +3665,7 @@
       "record_key": "256de60d4d4db919",
       "review_key": "507d8ee76454d3e1",
       "sequence": {
+        "cache_sequence_id": "e220e6dd4311",
         "fasta_header": "sp|Q9A919|DHMA_CAUVC Haloalkane dehalogenase OS=Caulobacter vibrioides (strain ATCC 19089 / CIP 103742 / CB 15) OX=190650 GN=dhmA PE=1 SV=1",
         "has_sequence": true,
         "length": 302,
@@ -3636,9 +3702,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_2c32b4335e7eb3de",
-        "embedding_key": "seq_2c32b4335e7eb3de",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "2c32b4335e7e",
+        "embedding_key": "2c32b4335e7e",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -3659,6 +3725,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "2c32b4335e7e",
         "pair_id": "pair_2920a432c5b465ad",
         "sequence_id": "seq_2c32b4335e7eb3de",
         "substrate_id": "pubchem:23615311"
@@ -3710,6 +3777,7 @@
       "record_key": "262cfc60c933fe94",
       "review_key": "5c5d794f79a9833a",
       "sequence": {
+        "cache_sequence_id": "2c32b4335e7e",
         "fasta_header": "tr|Q2L887|Q2L887_ASPNG Oxaloacetate hydrolase class protein OS=Aspergillus niger OX=5061 GN=An07g08390 PE=1 SV=1",
         "has_sequence": true,
         "length": 303,
@@ -3746,9 +3814,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_a6ed28bc8365296b",
-        "embedding_key": "seq_a6ed28bc8365296b",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "a6ed28bc8365",
+        "embedding_key": "a6ed28bc8365",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -3769,6 +3837,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "a6ed28bc8365",
         "pair_id": "pair_b6de00d12a2c0cb8",
         "sequence_id": "seq_a6ed28bc8365296b",
         "substrate_id": "pubchem:6436140"
@@ -3820,6 +3889,7 @@
       "record_key": "28f263b0a5977776",
       "review_key": "c7b1c1749a6863b7",
       "sequence": {
+        "cache_sequence_id": "a6ed28bc8365",
         "fasta_header": "sp|Q6XEC0|BLO48_KLEPN Beta-lactamase OXA-48 OS=Klebsiella pneumoniae OX=573 GN=OXA-48 PE=1 SV=1",
         "has_sequence": true,
         "length": 265,
@@ -3856,9 +3926,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_78b2123e74238158",
-        "embedding_key": "seq_78b2123e74238158",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "78b2123e7423",
+        "embedding_key": "78b2123e7423",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -3879,6 +3949,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "78b2123e7423",
         "pair_id": "pair_8993218b0de6c974",
         "sequence_id": "seq_78b2123e74238158",
         "substrate_id": "pubchem:439178"
@@ -3930,6 +4001,7 @@
       "record_key": "291ff3aa02b4a084",
       "review_key": "f7ac123bdbae77d6",
       "sequence": {
+        "cache_sequence_id": "78b2123e7423",
         "fasta_header": "tr|C6VW66|C6VW66_DYAFD Cellobiose 2-epimerase OS=Dyadobacter fermentans (strain ATCC 700827 / DSM 18053 / CIP 107007 / KCTC 52180 / NS114) OX=471854 GN=Dfer_1975 PE=3 SV=1",
         "has_sequence": true,
         "length": 392,
@@ -3966,9 +4038,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_e87418efa8d2d149",
-        "embedding_key": "seq_e87418efa8d2d149",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "e87418efa8d2",
+        "embedding_key": "e87418efa8d2",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -3989,6 +4061,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "e87418efa8d2",
         "pair_id": "pair_2c6d49182307aea1",
         "sequence_id": "seq_e87418efa8d2d149",
         "substrate_id": "pubchem:9905"
@@ -4040,6 +4113,7 @@
       "record_key": "2976b85fb9ea230b",
       "review_key": "f606ba10d00ee88c",
       "sequence": {
+        "cache_sequence_id": "e87418efa8d2",
         "fasta_header": "tr|B7T912|B7T912_PSEPU 4-hydroxyacetophenone monooxygenase OS=Pseudomonas putida OX=303 GN=hapE PE=3 SV=1",
         "has_sequence": true,
         "length": 640,
@@ -4076,9 +4150,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_b991b4e6ee923613",
-        "embedding_key": "seq_b991b4e6ee923613",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "b991b4e6ee92",
+        "embedding_key": "b991b4e6ee92",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -4099,6 +4173,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "b991b4e6ee92",
         "pair_id": "pair_733678bc5d1a044b",
         "sequence_id": "seq_b991b4e6ee923613",
         "substrate_id": "pubchem:445858"
@@ -4150,6 +4225,7 @@
       "record_key": "2a11fa0e591030cc",
       "review_key": "df6ff739c8baf67e",
       "sequence": {
+        "cache_sequence_id": "b991b4e6ee92",
         "fasta_header": "sp|O24146|4CL2_TOBAC 4-coumarate--CoA ligase 2 OS=Nicotiana tabacum OX=4097 GN=4CL2 PE=1 SV=1",
         "has_sequence": true,
         "length": 542,
@@ -4186,9 +4262,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_948a8fdf9306f875",
-        "embedding_key": "seq_948a8fdf9306f875",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "948a8fdf9306",
+        "embedding_key": "948a8fdf9306",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -4209,6 +4285,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "948a8fdf9306",
         "pair_id": "pair_b677fec71191fbea",
         "sequence_id": "seq_948a8fdf9306f875",
         "substrate_id": "pubchem:3955599"
@@ -4260,6 +4337,7 @@
       "record_key": "2a6ab2f46005fbd7",
       "review_key": "0bf9820f27a95beb",
       "sequence": {
+        "cache_sequence_id": "948a8fdf9306",
         "fasta_header": "sp|E5Y378|ISLA_BILW3 Isethionate sulfite-lyase OS=Bilophila wadsworthia (strain 3_1_6) OX=563192 GN=islA PE=1 SV=1",
         "has_sequence": true,
         "length": 830,
@@ -4296,9 +4374,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_02f6d2e75f1c823d",
-        "embedding_key": "seq_02f6d2e75f1c823d",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "02f6d2e75f1c",
+        "embedding_key": "02f6d2e75f1c",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -4319,6 +4397,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "02f6d2e75f1c",
         "pair_id": "pair_8889d647945e50a9",
         "sequence_id": "seq_02f6d2e75f1c823d",
         "substrate_id": "pubchem:5773"
@@ -4370,6 +4449,7 @@
       "record_key": "2c87e3fba0e4feeb",
       "review_key": "44bee2e3c4a84cf3",
       "sequence": {
+        "cache_sequence_id": "02f6d2e75f1c",
         "fasta_header": "tr|Q3SAW3|Q3SAW3_PSEAI Beta-lactamase OS=Pseudomonas aeruginosa OX=287 GN=bla(BEL1) PE=1 SV=1",
         "has_sequence": true,
         "length": 283,
@@ -4406,9 +4486,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_5fe14e9c75171b87",
-        "embedding_key": "seq_5fe14e9c75171b87",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "5fe14e9c7517",
+        "embedding_key": "5fe14e9c7517",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -4430,6 +4510,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "5fe14e9c7517",
         "pair_id": "pair_717c5a30ce79dd34",
         "sequence_id": "seq_5fe14e9c75171b87",
         "substrate_id": "pubchem:74982266"
@@ -4481,6 +4562,7 @@
       "record_key": "2f175d4af2cbfae0",
       "review_key": "e8682d262c985cf9",
       "sequence": {
+        "cache_sequence_id": "5fe14e9c7517",
         "fasta_header": "tr|W0PAN5|W0PAN5_ADVMD Succinate--CoA ligase [ADP-forming] subunit alpha OS=Advenella mimigardefordensis (strain DSM 17166 / LMG 22922 / DPN7) OX=1247726 GN=sucD PE=3 SV=1",
         "has_sequence": true,
         "length": 293,
@@ -4517,9 +4599,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_c750543d719f5dd2",
-        "embedding_key": "seq_c750543d719f5dd2",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "c750543d719f",
+        "embedding_key": "c750543d719f",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -4540,6 +4622,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "c750543d719f",
         "pair_id": "pair_40b9b7af36aa492f",
         "sequence_id": "seq_c750543d719f5dd2",
         "substrate_id": "pubchem:15993"
@@ -4591,6 +4674,7 @@
       "record_key": "30a3a7c75a9ff11a",
       "review_key": "0b202ad7784f97c8",
       "sequence": {
+        "cache_sequence_id": "c750543d719f",
         "fasta_header": "sp|P00582|DPO1_ECOLI DNA polymerase I OS=Escherichia coli (strain K12) OX=83333 GN=polA PE=1 SV=1",
         "has_sequence": true,
         "length": 928,
@@ -4627,9 +4711,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_9a1ef7c04ab01b1d",
-        "embedding_key": "seq_9a1ef7c04ab01b1d",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "9a1ef7c04ab0",
+        "embedding_key": "9a1ef7c04ab0",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -4650,6 +4734,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "9a1ef7c04ab0",
         "pair_id": "pair_f8dac38fc8fb0dff",
         "sequence_id": "seq_9a1ef7c04ab01b1d",
         "substrate_id": "pubchem:5810"
@@ -4701,6 +4786,7 @@
       "record_key": "3144ddec54029e1a",
       "review_key": "f7d6137d81112989",
       "sequence": {
+        "cache_sequence_id": "9a1ef7c04ab0",
         "fasta_header": "sp|A0NXQ7|4HYPE_ROSAI 4-hydroxyproline 2-epimerase OS=Roseibium aggregatum (strain ATCC 25650 / DSM 13394 / JCM 20685 / NBRC 16684 / NCIMB 2208 / IAM 12614 / B1) OX=384765 GN=SIAM614_28492 PE=1 SV=1",
         "has_sequence": true,
         "length": 310,
@@ -4737,9 +4823,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_c750543d719f5dd2",
-        "embedding_key": "seq_c750543d719f5dd2",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "c750543d719f",
+        "embedding_key": "c750543d719f",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -4760,6 +4846,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "c750543d719f",
         "pair_id": "pair_046e0abf62ea58d8",
         "sequence_id": "seq_c750543d719f5dd2",
         "substrate_id": "pubchem:64968"
@@ -4811,6 +4898,7 @@
       "record_key": "32924f84445bb9b6",
       "review_key": "a037c581cf409862",
       "sequence": {
+        "cache_sequence_id": "c750543d719f",
         "fasta_header": "sp|P00582|DPO1_ECOLI DNA polymerase I OS=Escherichia coli (strain K12) OX=83333 GN=polA PE=1 SV=1",
         "has_sequence": true,
         "length": 928,
@@ -4847,9 +4935,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_00be9d317c3117f7",
-        "embedding_key": "seq_00be9d317c3117f7",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "00be9d317c31",
+        "embedding_key": "00be9d317c31",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -4870,6 +4958,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "00be9d317c31",
         "pair_id": "pair_f425745fb17387e6",
         "sequence_id": "seq_00be9d317c3117f7",
         "substrate_id": "pubchem:5951"
@@ -4921,6 +5010,7 @@
       "record_key": "351d4d7aba61ea0a",
       "review_key": "eb7f7a8885b40a0c",
       "sequence": {
+        "cache_sequence_id": "00be9d317c31",
         "fasta_header": "sp|P00934|THRC_ECOLI Threonine synthase OS=Escherichia coli (strain K12) OX=83333 GN=thrC PE=1 SV=1",
         "has_sequence": true,
         "length": 428,
@@ -4957,9 +5047,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_35aba9c87ba62876",
-        "embedding_key": "seq_35aba9c87ba62876",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "35aba9c87ba6",
+        "embedding_key": "35aba9c87ba6",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -4980,6 +5070,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "35aba9c87ba6",
         "pair_id": "pair_72d581ef538a1889",
         "sequence_id": "seq_35aba9c87ba62876",
         "substrate_id": "pubchem:439178"
@@ -5031,6 +5122,7 @@
       "record_key": "385502ecf6c09842",
       "review_key": "6167be66ab3fb4af",
       "sequence": {
+        "cache_sequence_id": "35aba9c87ba6",
         "fasta_header": "sp|B8DZK4|CEEP_DICTD Cellobiose 2-epimerase OS=Dictyoglomus turgidum (strain DSM 6724 / Z-1310) OX=515635 GN=Dtur_0652 PE=1 SV=1",
         "has_sequence": true,
         "length": 389,
@@ -5067,9 +5159,9 @@
         "temperature_k": 313.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_8b865bdad42e0cd2",
-        "embedding_key": "seq_8b865bdad42e0cd2",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "8b865bdad42e",
+        "embedding_key": "8b865bdad42e",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -5090,6 +5182,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "8b865bdad42e",
         "pair_id": "pair_7e396239bdd95161",
         "sequence_id": "seq_8b865bdad42e0cd2",
         "substrate_id": "pubchem:2723872"
@@ -5141,6 +5234,7 @@
       "record_key": "391e12dd5c518e08",
       "review_key": "56430a33901dbbe7",
       "sequence": {
+        "cache_sequence_id": "8b865bdad42e",
         "fasta_header": "sp|D5MTT1|DLMIS_SERPR D-lyxose/D-mannose isomerase OS=Serratia proteamaculans OX=28151 GN=lyxi PE=1 SV=1",
         "has_sequence": true,
         "length": 228,
@@ -5177,9 +5271,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_39dfd53d4eb147e2",
-        "embedding_key": "seq_39dfd53d4eb147e2",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "39dfd53d4eb1",
+        "embedding_key": "39dfd53d4eb1",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -5200,6 +5294,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "39dfd53d4eb1",
         "pair_id": "pair_e04fc7971497221d",
         "sequence_id": "seq_39dfd53d4eb147e2",
         "substrate_id": "pubchem:6022"
@@ -5251,6 +5346,7 @@
       "record_key": "3a41e097185e7fff",
       "review_key": "d6fb2bebeae57382",
       "sequence": {
+        "cache_sequence_id": "39dfd53d4eb1",
         "fasta_header": "tr|E9ADF9|E9ADF9_LEIMA phosphoenolpyruvate carboxykinase (ATP) OS=Leishmania major OX=5664 GN=LMJF_27_1810 PE=3 SV=1",
         "has_sequence": true,
         "length": 525,
@@ -5287,9 +5383,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_4f87243739539649",
-        "embedding_key": "seq_4f87243739539649",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "4f8724373953",
+        "embedding_key": "4f8724373953",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "test",
@@ -5310,6 +5406,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "4f8724373953",
         "pair_id": "pair_a4939e81770f211e",
         "sequence_id": "seq_4f87243739539649",
         "substrate_id": "pubchem:6950578"
@@ -5361,6 +5458,7 @@
       "record_key": "3adb278a03f9cc56",
       "review_key": "863716f023770f23",
       "sequence": {
+        "cache_sequence_id": "4f8724373953",
         "fasta_header": "sp|Q3M5Z3|PAL_TRIV2 Phenylalanine ammonia-lyase OS=Trichormus variabilis (strain ATCC 29413 / PCC 7937) OX=240292 GN=Ava_3988 PE=1 SV=1",
         "has_sequence": true,
         "length": 567,
@@ -5397,9 +5495,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_39dfd53d4eb147e2",
-        "embedding_key": "seq_39dfd53d4eb147e2",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "39dfd53d4eb1",
+        "embedding_key": "39dfd53d4eb1",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -5420,6 +5518,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "39dfd53d4eb1",
         "pair_id": "pair_74ec25a0d046c827",
         "sequence_id": "seq_39dfd53d4eb147e2",
         "substrate_id": "pubchem:6022"
@@ -5471,6 +5570,7 @@
       "record_key": "3c9430dce68bf63e",
       "review_key": "a9175a95abb95ec0",
       "sequence": {
+        "cache_sequence_id": "39dfd53d4eb1",
         "fasta_header": "tr|E9ADF9|E9ADF9_LEIMA phosphoenolpyruvate carboxykinase (ATP) OS=Leishmania major OX=5664 GN=LMJF_27_1810 PE=3 SV=1",
         "has_sequence": true,
         "length": 525,
@@ -5507,9 +5607,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_0badd626903d8a66",
-        "embedding_key": "seq_0badd626903d8a66",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "0badd626903d",
+        "embedding_key": "0badd626903d",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -5530,6 +5630,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "0badd626903d",
         "pair_id": "pair_5cffdcfbd34f8243",
         "sequence_id": "seq_0badd626903d8a66",
         "substrate_id": "pubchem:6176"
@@ -5581,6 +5682,7 @@
       "record_key": "3e5a5199a5d40d26",
       "review_key": "8bf6ec63b07aae5a",
       "sequence": {
+        "cache_sequence_id": "0badd626903d",
         "fasta_header": "sp|P38502|ACKA_METTE Acetate kinase OS=Methanosarcina thermophila OX=2210 GN=ackA PE=1 SV=1",
         "has_sequence": true,
         "length": 408,
@@ -5617,9 +5719,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_b991b4e6ee923613",
-        "embedding_key": "seq_b991b4e6ee923613",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "b991b4e6ee92",
+        "embedding_key": "b991b4e6ee92",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -5640,6 +5742,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "b991b4e6ee92",
         "pair_id": "pair_bfa5c3c3b3c17b6a",
         "sequence_id": "seq_b991b4e6ee923613",
         "substrate_id": "pubchem:637775"
@@ -5691,6 +5794,7 @@
       "record_key": "3fa5fc96a417c989",
       "review_key": "eb0e5a86dd935b5a",
       "sequence": {
+        "cache_sequence_id": "b991b4e6ee92",
         "fasta_header": "sp|O24146|4CL2_TOBAC 4-coumarate--CoA ligase 2 OS=Nicotiana tabacum OX=4097 GN=4CL2 PE=1 SV=1",
         "has_sequence": true,
         "length": 542,
@@ -5727,9 +5831,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_7ca4dbdb2b8918de",
-        "embedding_key": "seq_7ca4dbdb2b8918de",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "7ca4dbdb2b89",
+        "embedding_key": "7ca4dbdb2b89",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -5750,6 +5854,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "7ca4dbdb2b89",
         "pair_id": "pair_bd880b7ff086c3d4",
         "sequence_id": "seq_7ca4dbdb2b8918de",
         "substrate_id": "pubchem:5810"
@@ -5801,6 +5906,7 @@
       "record_key": "40d7a54356846eff",
       "review_key": "4bb1f52c5ba0f941",
       "sequence": {
+        "cache_sequence_id": "7ca4dbdb2b89",
         "fasta_header": "sp|A3QFI1|4HYPE_SHELP 4-hydroxyproline 2-epimerase OS=Shewanella loihica (strain ATCC BAA-1088 / PV-4) OX=323850 GN=Shew_2363 PE=1 SV=1",
         "has_sequence": true,
         "length": 333,
@@ -5837,9 +5943,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_e5fd2f65d603cba3",
-        "embedding_key": "seq_e5fd2f65d603cba3",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "e5fd2f65d603",
+        "embedding_key": "e5fd2f65d603",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -5860,6 +5966,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "e5fd2f65d603",
         "pair_id": "pair_fabc421f781f6d16",
         "sequence_id": "seq_e5fd2f65d603cba3",
         "substrate_id": "pubchem:5460362"
@@ -5911,6 +6018,7 @@
       "record_key": "42be3b3ef4c8dac4",
       "review_key": "eeee56dc37ed006f",
       "sequence": {
+        "cache_sequence_id": "e5fd2f65d603",
         "fasta_header": "sp|P11880|MURF_ECOLI UDP-N-acetylmuramoyl-tripeptide--D-alanyl-D-alanine ligase OS=Escherichia coli (strain K12) OX=83333 GN=murF PE=1 SV=2",
         "has_sequence": true,
         "length": 452,
@@ -5947,9 +6055,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_a7a493ebc35aa28b",
-        "embedding_key": "seq_a7a493ebc35aa28b",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "a7a493ebc35a",
+        "embedding_key": "a7a493ebc35a",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -5970,6 +6078,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "a7a493ebc35a",
         "pair_id": "pair_5ee666749de4b194",
         "sequence_id": "seq_a7a493ebc35aa28b",
         "substrate_id": "pubchem:5810"
@@ -6021,6 +6130,7 @@
       "record_key": "43a4a6c52021d8fd",
       "review_key": "7b4d8a8eb9cf87a1",
       "sequence": {
+        "cache_sequence_id": "a7a493ebc35a",
         "fasta_header": "sp|B9JQV3|4HYPE_ALLAM 4-hydroxyproline 2-epimerase OS=Allorhizobium ampelinum (strain ATCC BAA-846 / DSM 112012 / S4) OX=311402 GN=Avi_0518 PE=1 SV=1",
         "has_sequence": true,
         "length": 347,
@@ -6057,9 +6167,9 @@
         "temperature_k": 300.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_e30c3554bff21667",
-        "embedding_key": "seq_e30c3554bff21667",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "e30c3554bff2",
+        "embedding_key": "e30c3554bff2",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -6080,6 +6190,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "e30c3554bff2",
         "pair_id": "pair_32fed63e1e77fcde",
         "sequence_id": "seq_e30c3554bff21667",
         "substrate_id": "pubchem:6322"
@@ -6131,6 +6242,7 @@
       "record_key": "451b26fa1d1b9c40",
       "review_key": "1bf95d2badd03613",
       "sequence": {
+        "cache_sequence_id": "e30c3554bff2",
         "fasta_header": "tr|A0A484F6I1|A0A484F6I1_9EURY Arginine decarboxylase OS=Methanimicrococcus blatticola OX=91560 GN=C7391_0685 PE=3 SV=1",
         "has_sequence": true,
         "length": 483,
@@ -6167,9 +6279,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_9273adf9f399e50c",
-        "embedding_key": "seq_9273adf9f399e50c",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "9273adf9f399",
+        "embedding_key": "9273adf9f399",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -6190,6 +6302,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "9273adf9f399",
         "pair_id": "pair_858563c10071f9ce",
         "sequence_id": "seq_9273adf9f399e50c",
         "substrate_id": "pubchem:7468"
@@ -6241,6 +6354,7 @@
       "record_key": "47826e5a47c1b343",
       "review_key": "93cc71df7b2380ce",
       "sequence": {
+        "cache_sequence_id": "9273adf9f399",
         "fasta_header": "sp|Q93TJ5|HAPMO_PSEFL 4-hydroxyacetophenone monooxygenase OS=Pseudomonas fluorescens OX=294 GN=hapE PE=1 SV=1",
         "has_sequence": true,
         "length": 640,
@@ -6277,9 +6391,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_5fe14e9c75171b87",
-        "embedding_key": "seq_5fe14e9c75171b87",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "5fe14e9c7517",
+        "embedding_key": "5fe14e9c7517",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "test",
@@ -6301,6 +6415,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "5fe14e9c7517",
         "pair_id": "pair_cca552c9e47e56d4",
         "sequence_id": "seq_5fe14e9c75171b87",
         "substrate_id": "pubchem:811"
@@ -6352,6 +6467,7 @@
       "record_key": "47cbf61195316742",
       "review_key": "7144bb041098be16",
       "sequence": {
+        "cache_sequence_id": "5fe14e9c7517",
         "fasta_header": "tr|W0PAN5|W0PAN5_ADVMD Succinate--CoA ligase [ADP-forming] subunit alpha OS=Advenella mimigardefordensis (strain DSM 17166 / LMG 22922 / DPN7) OX=1247726 GN=sucD PE=3 SV=1",
         "has_sequence": true,
         "length": 293,
@@ -6388,9 +6504,9 @@
         "temperature_k": 323.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_439f7553837807af",
-        "embedding_key": "seq_439f7553837807af",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "439f75538378",
+        "embedding_key": "439f75538378",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -6411,6 +6527,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "439f75538378",
         "pair_id": "pair_bdd7f10b0b9a6cdd",
         "sequence_id": "seq_439f7553837807af",
         "substrate_id": "pubchem:440575"
@@ -6462,6 +6579,7 @@
       "record_key": "488e41d0db1a5805",
       "review_key": "9b2b8210a92fdc1d",
       "sequence": {
+        "cache_sequence_id": "439f75538378",
         "fasta_header": "tr|H3ZMH5|H3ZMH5_THELN Proline racemase OS=Thermococcus litoralis (strain ATCC 51850 / DSM 5473 / JCM 8560 / NS-C) OX=523849 GN=OCC_00372 PE=1 SV=1",
         "has_sequence": true,
         "length": 331,
@@ -6498,9 +6616,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_ce208653e388c1a7",
-        "embedding_key": "seq_ce208653e388c1a7",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "ce208653e388",
+        "embedding_key": "ce208653e388",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -6521,6 +6639,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "ce208653e388",
         "pair_id": "pair_9d66e751f167ec4f",
         "sequence_id": "seq_ce208653e388c1a7",
         "substrate_id": "pubchem:439178"
@@ -6572,6 +6691,7 @@
       "record_key": "4ab9143e9aa998fb",
       "review_key": "1d3adc57df091ead",
       "sequence": {
+        "cache_sequence_id": "ce208653e388",
         "fasta_header": "tr|C6XVU9|C6XVU9_PEDHD Cellobiose 2-epimerase OS=Pedobacter heparinus (strain ATCC 13125 / DSM 2366 / CIP 104194 / JCM 7457 / NBRC 12017 / NCIMB 9290 / NRRL B-14731 / HIM 762-3) OX=485917 GN=Phep_3983 PE=3 SV=1",
         "has_sequence": true,
         "length": 397,
@@ -6608,9 +6728,9 @@
         "temperature_k": 304.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_bc0b6219da90ad64",
-        "embedding_key": "seq_bc0b6219da90ad64",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "bc0b6219da90",
+        "embedding_key": "bc0b6219da90",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -6631,6 +6751,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "bc0b6219da90",
         "pair_id": "pair_6049cd559b4b7808",
         "sequence_id": "seq_bc0b6219da90ad64",
         "substrate_id": "pubchem:6140"
@@ -6682,6 +6803,7 @@
       "record_key": "4c1249297c20cac1",
       "review_key": "2f8fef4d5dcdd1c7",
       "sequence": {
+        "cache_sequence_id": "bc0b6219da90",
         "fasta_header": "sp|Q6GZ04|PAM_TAXCA Phenylalanine aminomutase (L-beta-phenylalanine forming) OS=Taxus canadensis OX=88032 GN=pam PE=1 SV=1",
         "has_sequence": true,
         "length": 698,
@@ -6718,9 +6840,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_e51a3404c9aee144",
-        "embedding_key": "seq_e51a3404c9aee144",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "e51a3404c9ae",
+        "embedding_key": "e51a3404c9ae",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -6741,6 +6863,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "e51a3404c9ae",
         "pair_id": "pair_d59016c9dd5b3dde",
         "sequence_id": "seq_e51a3404c9aee144",
         "substrate_id": "pubchem:6419709"
@@ -6792,6 +6915,7 @@
       "record_key": "4dc718f13d2bb16a",
       "review_key": "a86af8493236229d",
       "sequence": {
+        "cache_sequence_id": "e51a3404c9ae",
         "fasta_header": "sp|P06672|PDC_ZYMMO Pyruvate decarboxylase OS=Zymomonas mobilis subsp. mobilis (strain ATCC 31821 / ZM4 / CP4) OX=264203 GN=pdc PE=1 SV=1",
         "has_sequence": true,
         "length": 568,
@@ -6828,9 +6952,9 @@
         "temperature_k": 333.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_00e3b0bef8c1907f",
-        "embedding_key": "seq_00e3b0bef8c1907f",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "00e3b0bef8c1",
+        "embedding_key": "00e3b0bef8c1",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -6851,6 +6975,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "00e3b0bef8c1",
         "pair_id": "pair_bbd900e06328cb99",
         "sequence_id": "seq_00e3b0bef8c1907f",
         "substrate_id": "pubchem:644111"
@@ -6902,6 +7027,7 @@
       "record_key": "4dd4640e1689b7be",
       "review_key": "a4bf378e1af11528",
       "sequence": {
+        "cache_sequence_id": "00e3b0bef8c1",
         "fasta_header": "tr|N0DP12|N0DP12_RHILI L-ribulose 3-epimerase OS=Rhizobium loti OX=381 PE=1 SV=1",
         "has_sequence": true,
         "length": 297,
@@ -6938,9 +7064,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_8ea512d1c5e51702",
-        "embedding_key": "seq_8ea512d1c5e51702",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "8ea512d1c5e5",
+        "embedding_key": "8ea512d1c5e5",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "test",
@@ -6961,6 +7087,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "8ea512d1c5e5",
         "pair_id": "pair_1839269e6db8b998",
         "sequence_id": "seq_8ea512d1c5e51702",
         "substrate_id": "pubchem:439183"
@@ -7012,6 +7139,7 @@
       "record_key": "4eaf250ca1a663aa",
       "review_key": "fa3ecd3fd1d105d8",
       "sequence": {
+        "cache_sequence_id": "8ea512d1c5e5",
         "fasta_header": "sp|P37689|GPMI_ECOLI 2,3-bisphosphoglycerate-independent phosphoglycerate mutase OS=Escherichia coli (strain K12) OX=83333 GN=gpmI PE=1 SV=1",
         "has_sequence": true,
         "length": 514,
@@ -7048,9 +7176,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_40d0f62261a87478",
-        "embedding_key": "seq_40d0f62261a87478",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "40d0f62261a8",
+        "embedding_key": "40d0f62261a8",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -7071,6 +7199,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "40d0f62261a8",
         "pair_id": "pair_a65d272f23747f08",
         "sequence_id": "seq_40d0f62261a87478",
         "substrate_id": "pubchem:172313"
@@ -7122,6 +7251,7 @@
       "record_key": "4f2e71d9f6a03db3",
       "review_key": "171af3b99a1d773d",
       "sequence": {
+        "cache_sequence_id": "40d0f62261a8",
         "fasta_header": "sp|P0A991|ALF1_ECOLI Fructose-bisphosphate aldolase class 1 OS=Escherichia coli (strain K12) OX=83333 GN=fbaB PE=1 SV=2",
         "has_sequence": true,
         "length": 350,
@@ -7158,9 +7288,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_9273adf9f399e50c",
-        "embedding_key": "seq_9273adf9f399e50c",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "9273adf9f399",
+        "embedding_key": "9273adf9f399",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -7181,6 +7311,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "9273adf9f399",
         "pair_id": "pair_969f57e73a1a3773",
         "sequence_id": "seq_9273adf9f399e50c",
         "substrate_id": "pubchem:8487"
@@ -7232,6 +7363,7 @@
       "record_key": "4f68a994f7b43d9c",
       "review_key": "42e970422c72d5bc",
       "sequence": {
+        "cache_sequence_id": "9273adf9f399",
         "fasta_header": "sp|Q93TJ5|HAPMO_PSEFL 4-hydroxyacetophenone monooxygenase OS=Pseudomonas fluorescens OX=294 GN=hapE PE=1 SV=1",
         "has_sequence": true,
         "length": 640,
@@ -7268,9 +7400,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_78b2123e74238158",
-        "embedding_key": "seq_78b2123e74238158",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "78b2123e7423",
+        "embedding_key": "78b2123e7423",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -7291,6 +7423,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "78b2123e7423",
         "pair_id": "pair_50d4aff298dc1733",
         "sequence_id": "seq_78b2123e74238158",
         "substrate_id": "pubchem:6134"
@@ -7342,6 +7475,7 @@
       "record_key": "52d737afb2a266e6",
       "review_key": "8728406c6923df2b",
       "sequence": {
+        "cache_sequence_id": "78b2123e7423",
         "fasta_header": "tr|C6VW66|C6VW66_DYAFD Cellobiose 2-epimerase OS=Dyadobacter fermentans (strain ATCC 700827 / DSM 18053 / CIP 107007 / KCTC 52180 / NS114) OX=471854 GN=Dfer_1975 PE=3 SV=1",
         "has_sequence": true,
         "length": 392,
@@ -7378,9 +7512,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_e220e6dd43116151",
-        "embedding_key": "seq_e220e6dd43116151",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "e220e6dd4311",
+        "embedding_key": "e220e6dd4311",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -7401,6 +7535,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "e220e6dd4311",
         "pair_id": "pair_9e90f951f6a3a0c4",
         "sequence_id": "seq_e220e6dd43116151",
         "substrate_id": "pubchem:10992"
@@ -7452,6 +7587,7 @@
       "record_key": "53156dd176dfeda8",
       "review_key": "4fb4f31aa372a965",
       "sequence": {
+        "cache_sequence_id": "e220e6dd4311",
         "fasta_header": "sp|Q9A919|DHMA_CAUVC Haloalkane dehalogenase OS=Caulobacter vibrioides (strain ATCC 19089 / CIP 103742 / CB 15) OX=190650 GN=dhmA PE=1 SV=1",
         "has_sequence": true,
         "length": 302,
@@ -7488,9 +7624,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_8107ae501357e2a9",
-        "embedding_key": "seq_8107ae501357e2a9",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "8107ae501357",
+        "embedding_key": "8107ae501357",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -7511,6 +7647,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "8107ae501357",
         "pair_id": "pair_c996d2dfd6f1d87e",
         "sequence_id": "seq_8107ae501357e2a9",
         "substrate_id": "pubchem:439153"
@@ -7562,6 +7699,7 @@
       "record_key": "5353b270347b9c6f",
       "review_key": "958f0fa39c95f3b2",
       "sequence": {
+        "cache_sequence_id": "8107ae501357",
         "fasta_header": "tr|Q70DV6|Q70DV6_THETH NADH dehydrogenase OS=Thermus thermophilus OX=274 GN=NrcN PE=3 SV=2",
         "has_sequence": true,
         "length": 395,
@@ -7598,9 +7736,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_6eb62d752564e311",
-        "embedding_key": "seq_6eb62d752564e311",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "6eb62d752564",
+        "embedding_key": "6eb62d752564",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -7621,6 +7759,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "6eb62d752564",
         "pair_id": "pair_7da661c3c6c9ca61",
         "sequence_id": "seq_6eb62d752564e311",
         "substrate_id": "pubchem:5957"
@@ -7672,6 +7811,7 @@
       "record_key": "579b584dbdbaecaa",
       "review_key": "fae9c8163d80dd9e",
       "sequence": {
+        "cache_sequence_id": "6eb62d752564",
         "fasta_header": "sp|P31742|GSPE_XANCP Type II secretion system protein E OS=Xanthomonas campestris pv. campestris (strain ATCC 33913 / DSM 3586 / NCPPB 528 / LMG 568 / P 25) OX=190485 GN=xpsE PE=1 SV=3",
         "has_sequence": true,
         "length": 567,
@@ -7708,9 +7848,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_977ac4ccc3c55ca6",
-        "embedding_key": "seq_977ac4ccc3c55ca6",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "977ac4ccc3c5",
+        "embedding_key": "977ac4ccc3c5",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -7731,6 +7871,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "977ac4ccc3c5",
         "pair_id": "pair_f92619399ae33b89",
         "sequence_id": "seq_977ac4ccc3c55ca6",
         "substrate_id": "pubchem:8005"
@@ -7782,6 +7923,7 @@
       "record_key": "5aa23adb0ed88ab4",
       "review_key": "fb18c5f5b97c48b0",
       "sequence": {
+        "cache_sequence_id": "977ac4ccc3c5",
         "fasta_header": "tr|K0CAI2|K0CAI2_ALCDB Hydrolase, alpha/beta fold family, putative OS=Alcanivorax dieselolei (strain DSM 16502 / CGMCC 1.3690 / MCCC 1A00001 / B-5) OX=930169 GN=B5T_00392 PE=4 SV=1",
         "has_sequence": true,
         "length": 295,
@@ -7818,9 +7960,9 @@
         "temperature_k": 328.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_f58e42ef95f6e628",
-        "embedding_key": "seq_f58e42ef95f6e628",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "f58e42ef95f6",
+        "embedding_key": "f58e42ef95f6",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -7841,6 +7983,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "f58e42ef95f6",
         "pair_id": "pair_abac8c24ca4539dc",
         "sequence_id": "seq_f58e42ef95f6e628",
         "substrate_id": "pubchem:644102"
@@ -7892,6 +8035,7 @@
       "record_key": "62150f3d8a52362b",
       "review_key": "78e99ce2fb7a4147",
       "sequence": {
+        "cache_sequence_id": "f58e42ef95f6",
         "fasta_header": "tr|Q86M43|Q86M43_ASCSU inorganic diphosphatase OS=Ascaris suum OX=6253 GN=AdR44 PE=2 SV=1",
         "has_sequence": true,
         "length": 360,
@@ -7928,9 +8072,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_27293a9716281920",
-        "embedding_key": "seq_27293a9716281920",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "27293a971628",
+        "embedding_key": "27293a971628",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -7951,6 +8095,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "27293a971628",
         "pair_id": "pair_40863cc576a4c551",
         "sequence_id": "seq_27293a9716281920",
         "substrate_id": "pubchem:5460050"
@@ -8002,6 +8147,7 @@
       "record_key": "63eb2e6d27a0bbb1",
       "review_key": "946ff02ce20f4b54",
       "sequence": {
+        "cache_sequence_id": "27293a971628",
         "fasta_header": "tr|A0A075B5H4|A0A075B5H4_9SPHN NADH-dependent reductase for 4-deoxy-L-erythro-5-hexoseulose uronate OS=Sphingomonas sp. A1 OX=90322 GN=a1-R' PE=1 SV=1",
         "has_sequence": true,
         "length": 258,
@@ -8038,9 +8184,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_37a4ed8c206025a9",
-        "embedding_key": "seq_37a4ed8c206025a9",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "37a4ed8c2060",
+        "embedding_key": "37a4ed8c2060",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -8062,6 +8208,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "37a4ed8c2060",
         "pair_id": "pair_7f472ac86d4543ec",
         "sequence_id": "seq_37a4ed8c206025a9",
         "substrate_id": "pubchem:160419"
@@ -8113,6 +8260,7 @@
       "record_key": "70e7a5378793e50f",
       "review_key": "26d4dd90f166b9dd",
       "sequence": {
+        "cache_sequence_id": "37a4ed8c2060",
         "fasta_header": "sp|Q0VPF7|SUCC_ALCBS Succinate--CoA ligase [ADP-forming] subunit beta OS=Alcanivorax borkumensis (strain ATCC 700651 / DSM 11573 / NCIMB 13689 / SK2) OX=393595 GN=sucC PE=3 SV=1",
         "has_sequence": true,
         "length": 389,
@@ -8149,9 +8297,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_c96891e8f45bd20c",
-        "embedding_key": "seq_c96891e8f45bd20c",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "c96891e8f45b",
+        "embedding_key": "c96891e8f45b",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "test",
@@ -8175,6 +8323,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "c96891e8f45b",
         "pair_id": "pair_9f7d43d368698fed",
         "sequence_id": "seq_c96891e8f45bd20c",
         "substrate_id": "pubchem:10925943"
@@ -8226,6 +8375,7 @@
       "record_key": "71f38cf90d9f9d24",
       "review_key": "57a9aa2db52a99df",
       "sequence": {
+        "cache_sequence_id": "c96891e8f45b",
         "fasta_header": "tr|A0A3G1VCB1|A0A3G1VCB1_LAMGA Beta-glucosidase 1 OS=Lamium galeobdolon OX=53161 GN=Bglu1 PE=2 SV=1",
         "has_sequence": true,
         "length": 532,
@@ -8262,9 +8412,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_843116d6512090ec",
-        "embedding_key": "seq_843116d6512090ec",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "843116d65120",
+        "embedding_key": "843116d65120",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -8285,6 +8435,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "843116d65120",
         "pair_id": "pair_a35fa99d7e692a9b",
         "sequence_id": "seq_843116d6512090ec",
         "substrate_id": "pubchem:114935"
@@ -8336,6 +8487,7 @@
       "record_key": "73f77112be6282d2",
       "review_key": "e16f4c5a2d717106",
       "sequence": {
+        "cache_sequence_id": "843116d65120",
         "fasta_header": "sp|Q9DC29|ABCB6_MOUSE ATP-binding cassette sub-family B member 6 OS=Mus musculus OX=10090 GN=Abcb6 PE=1 SV=1",
         "has_sequence": true,
         "length": 842,
@@ -8372,9 +8524,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_dff406f4a44eb698",
-        "embedding_key": "seq_dff406f4a44eb698",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "dff406f4a44e",
+        "embedding_key": "dff406f4a44e",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -8395,6 +8547,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "dff406f4a44e",
         "pair_id": "pair_534ece159d224f4d",
         "sequence_id": "seq_dff406f4a44eb698",
         "substrate_id": "pubchem:5961"
@@ -8446,6 +8599,7 @@
       "record_key": "7b3d3277ad7821e3",
       "review_key": "bdf5556afa233d0e",
       "sequence": {
+        "cache_sequence_id": "dff406f4a44e",
         "fasta_header": "sp|P17169|GLMS_ECOLI Glutamine--fructose-6-phosphate aminotransferase [isomerizing] OS=Escherichia coli (strain K12) OX=83333 GN=glmS PE=1 SV=4",
         "has_sequence": true,
         "length": 609,
@@ -8482,9 +8636,9 @@
         "temperature_k": 295.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_f5d1834c2b1cb001",
-        "embedding_key": "seq_f5d1834c2b1cb001",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "f5d1834c2b1c",
+        "embedding_key": "f5d1834c2b1c",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "val",
@@ -8505,6 +8659,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "f5d1834c2b1c",
         "pair_id": "pair_3fa9052fbe6a3af3",
         "sequence_id": "seq_f5d1834c2b1cb001",
         "substrate_id": "pubchem:25188"
@@ -8556,6 +8711,7 @@
       "record_key": "7b751c7db9ebc21c",
       "review_key": "ad01cff120790ff5",
       "sequence": {
+        "cache_sequence_id": "f5d1834c2b1c",
         "fasta_header": "tr|Q4FP19|Q4FP19_PELUB 3-methylmercaptopropionyl-CoA ligase OS=Pelagibacter ubique (strain HTCC1062) OX=335992 GN=fadD PE=3 SV=1",
         "has_sequence": true,
         "length": 542,
@@ -8592,9 +8748,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_4a91e8a921fdb070",
-        "embedding_key": "seq_4a91e8a921fdb070",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "4a91e8a921fd",
+        "embedding_key": "4a91e8a921fd",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -8615,6 +8771,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "4a91e8a921fd",
         "pair_id": "pair_0c709830f5ee6f55",
         "sequence_id": "seq_4a91e8a921fdb070",
         "substrate_id": "pubchem:73323"
@@ -8666,6 +8823,7 @@
       "record_key": "7c8506d8adbd4421",
       "review_key": "ea406d9bf985831f",
       "sequence": {
+        "cache_sequence_id": "4a91e8a921fd",
         "fasta_header": "sp|P04079|GUAA_ECOLI GMP synthase [glutamine-hydrolyzing] OS=Escherichia coli (strain K12) OX=83333 GN=guaA PE=1 SV=1",
         "has_sequence": true,
         "length": 525,
@@ -8702,9 +8860,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_25748ead19b7cd56",
-        "embedding_key": "seq_25748ead19b7cd56",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "25748ead19b7",
+        "embedding_key": "25748ead19b7",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -8725,6 +8883,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "25748ead19b7",
         "pair_id": "pair_e2b477a094a49700",
         "sequence_id": "seq_25748ead19b7cd56",
         "substrate_id": "pubchem:65091"
@@ -8776,6 +8935,7 @@
       "record_key": "7dc65490ab3be446",
       "review_key": "b31a92be4bad8d1e",
       "sequence": {
+        "cache_sequence_id": "25748ead19b7",
         "fasta_header": "sp|Q97W02|DPO4_SACS2 DNA polymerase IV OS=Saccharolobus solfataricus (strain ATCC 35092 / DSM 1617 / JCM 11322 / P2) OX=273057 GN=dbh PE=1 SV=1",
         "has_sequence": true,
         "length": 352,
@@ -8812,9 +8972,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_6db26ce0657676df",
-        "embedding_key": "seq_6db26ce0657676df",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "6db26ce06576",
+        "embedding_key": "6db26ce06576",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -8833,6 +8993,7 @@
         "uniprot_candidate_ids": []
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "6db26ce06576",
         "pair_id": "pair_19606baeb5d469ba",
         "sequence_id": "seq_6db26ce0657676df",
         "substrate_id": "pubchem:4462"
@@ -8884,6 +9045,7 @@
       "record_key": "882dd9e33753658c",
       "review_key": "ebb19f00df4261cc",
       "sequence": {
+        "cache_sequence_id": "6db26ce06576",
         "fasta_header": "sp|A5F5X0|NQRB_VIBC3 Na(+)-translocating NADH-quinone reductase subunit B OS=Vibrio cholerae serotype O1 (strain ATCC 39541 / Classical Ogawa 395 / O395) OX=345073 GN=nqrB PE=1 SV=1",
         "has_sequence": true,
         "length": 415,
@@ -8920,9 +9082,9 @@
         "temperature_k": 308.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_d8a13235e36b7286",
-        "embedding_key": "seq_d8a13235e36b7286",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "d8a13235e36b",
+        "embedding_key": "d8a13235e36b",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -8943,6 +9105,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "d8a13235e36b",
         "pair_id": "pair_28c96b6d59fd6516",
         "sequence_id": "seq_d8a13235e36b7286",
         "substrate_id": "pubchem:17409"
@@ -8994,6 +9157,7 @@
       "record_key": "887b4e11d3610558",
       "review_key": "2e37fc140a4464e4",
       "sequence": {
+        "cache_sequence_id": "d8a13235e36b",
         "fasta_header": "tr|A0A2P1C6N4|A0A2P1C6N4_IRPLA Dye-decolorizing peroxidase OS=Irpex lacteus OX=5319 PE=1 SV=1",
         "has_sequence": true,
         "length": 480,
@@ -9030,9 +9194,9 @@
         "temperature_k": 298.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_27293a9716281920",
-        "embedding_key": "seq_27293a9716281920",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "27293a971628",
+        "embedding_key": "27293a971628",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -9053,6 +9217,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "27293a971628",
         "pair_id": "pair_b8245a4ddabf7f3c",
         "sequence_id": "seq_27293a9716281920",
         "substrate_id": "pubchem:44229111"
@@ -9104,6 +9269,7 @@
       "record_key": "897c01f97b545bf9",
       "review_key": "a5119226a714a01c",
       "sequence": {
+        "cache_sequence_id": "27293a971628",
         "fasta_header": "tr|A0A075B5H4|A0A075B5H4_9SPHN NADH-dependent reductase for 4-deoxy-L-erythro-5-hexoseulose uronate OS=Sphingomonas sp. A1 OX=90322 GN=a1-R' PE=1 SV=1",
         "has_sequence": true,
         "length": 258,
@@ -9140,9 +9306,9 @@
         "temperature_k": 318.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_eba907ce489ab3b9",
-        "embedding_key": "seq_eba907ce489ab3b9",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "eba907ce489a",
+        "embedding_key": "eba907ce489a",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -9163,6 +9329,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "eba907ce489a",
         "pair_id": "pair_6047e943c900ad9e",
         "sequence_id": "seq_eba907ce489ab3b9",
         "substrate_id": "pubchem:84422"
@@ -9214,6 +9381,7 @@
       "record_key": "8aab0395754cca49",
       "review_key": "f70c92238e4c5a3e",
       "sequence": {
+        "cache_sequence_id": "eba907ce489a",
         "fasta_header": "sp|D4GPK6|LACC_HALVD Laccase OS=Haloferax volcanii (strain ATCC 29605 / DSM 3757 / JCM 8879 / NBRC 14742 / NCIMB 2012 / VKM B-1768 / DS2) OX=309800 GN=lccA PE=1 SV=1",
         "has_sequence": true,
         "length": 579,
@@ -9250,9 +9418,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_c96891e8f45bd20c",
-        "embedding_key": "seq_c96891e8f45bd20c",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "c96891e8f45b",
+        "embedding_key": "c96891e8f45b",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -9276,6 +9444,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "c96891e8f45b",
         "pair_id": "pair_b8f3c225bee385a7",
         "sequence_id": "seq_c96891e8f45bd20c",
         "substrate_id": "pubchem:161355"
@@ -9327,6 +9496,7 @@
       "record_key": "8b6e16db725a181a",
       "review_key": "7f10a55ebee9d596",
       "sequence": {
+        "cache_sequence_id": "c96891e8f45b",
         "fasta_header": "tr|A0A3G1VCB1|A0A3G1VCB1_LAMGA Beta-glucosidase 1 OS=Lamium galeobdolon OX=53161 GN=Bglu1 PE=2 SV=1",
         "has_sequence": true,
         "length": 532,
@@ -9363,9 +9533,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_cf4fa65d7386db77",
-        "embedding_key": "seq_cf4fa65d7386db77",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "cf4fa65d7386",
+        "embedding_key": "cf4fa65d7386",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -9386,6 +9556,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "cf4fa65d7386",
         "pair_id": "pair_095c0f76ee1e77a5",
         "sequence_id": "seq_cf4fa65d7386db77",
         "substrate_id": "pubchem:7041"
@@ -9437,6 +9608,7 @@
       "record_key": "919f3e36c309ea7f",
       "review_key": "bf4c1283fcc68e75",
       "sequence": {
+        "cache_sequence_id": "cf4fa65d7386",
         "fasta_header": "tr|A0A0M4FJ81|A0A0M4FJ81_9ACTN Two-domain laccase OS=Streptomyces griseoflavus OX=35619 PE=1 SV=1",
         "has_sequence": true,
         "length": 322,
@@ -9473,9 +9645,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_fe715e85e7474fc7",
-        "embedding_key": "seq_fe715e85e7474fc7",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "fe715e85e747",
+        "embedding_key": "fe715e85e747",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -9496,6 +9668,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "fe715e85e747",
         "pair_id": "pair_b2a493a9416f323b",
         "sequence_id": "seq_fe715e85e7474fc7",
         "substrate_id": "pubchem:92753"
@@ -9547,6 +9720,7 @@
       "record_key": "95dc5f88deb2bfec",
       "review_key": "aa4649c085e281a8",
       "sequence": {
+        "cache_sequence_id": "fe715e85e747",
         "fasta_header": "sp|P54541|PCCB_BACSU Putative propionyl-CoA carboxylase beta chain OS=Bacillus subtilis (strain 168) OX=224308 GN=yqjD PE=3 SV=2",
         "has_sequence": true,
         "length": 507,
@@ -9583,9 +9757,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_6eb62d752564e311",
-        "embedding_key": "seq_6eb62d752564e311",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "6eb62d752564",
+        "embedding_key": "6eb62d752564",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -9606,6 +9780,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "6eb62d752564",
         "pair_id": "pair_887d2c5da58dcd2e",
         "sequence_id": "seq_6eb62d752564e311",
         "substrate_id": "pubchem:5957"
@@ -9657,6 +9832,7 @@
       "record_key": "9c14422b393b231c",
       "review_key": "d19c8d7d29382523",
       "sequence": {
+        "cache_sequence_id": "6eb62d752564",
         "fasta_header": "sp|P31742|GSPE_XANCP Type II secretion system protein E OS=Xanthomonas campestris pv. campestris (strain ATCC 33913 / DSM 3586 / NCPPB 528 / LMG 568 / P 25) OX=190485 GN=xpsE PE=1 SV=3",
         "has_sequence": true,
         "length": 567,
@@ -9693,9 +9869,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_6a1c7eefe6967fc0",
-        "embedding_key": "seq_6a1c7eefe6967fc0",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "6a1c7eefe696",
+        "embedding_key": "6a1c7eefe696",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -9716,6 +9892,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "6a1c7eefe696",
         "pair_id": "pair_208222adae79aab3",
         "sequence_id": "seq_6a1c7eefe6967fc0",
         "substrate_id": "pubchem:107735"
@@ -9767,6 +9944,7 @@
       "record_key": "9fab8f84d92edd5f",
       "review_key": "d40b40a8c60ee2f2",
       "sequence": {
+        "cache_sequence_id": "6a1c7eefe696",
         "fasta_header": "sp|Q9RUB5|DXS_DEIRA 1-deoxy-D-xylulose-5-phosphate synthase OS=Deinococcus radiodurans (strain ATCC 13939 / DSM 20539 / JCM 16871 / CCUG 27074 / LMG 4051 / NBRC 15346 / NCIMB 9279 / VKM B-1422 / R1) OX=243230 GN=dxs PE=1 SV=1",
         "has_sequence": true,
         "length": 629,
@@ -9803,9 +9981,9 @@
         "temperature_k": 310.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_e5fd2f65d603cba3",
-        "embedding_key": "seq_e5fd2f65d603cba3",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "e5fd2f65d603",
+        "embedding_key": "e5fd2f65d603",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -9826,6 +10004,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "e5fd2f65d603",
         "pair_id": "pair_b1e2f599ac5c4b7c",
         "sequence_id": "seq_e5fd2f65d603cba3",
         "substrate_id": "pubchem:6992400"
@@ -9877,6 +10056,7 @@
       "record_key": "a1701b05a75763e7",
       "review_key": "40b1859823ff8c76",
       "sequence": {
+        "cache_sequence_id": "e5fd2f65d603",
         "fasta_header": "sp|P11880|MURF_ECOLI UDP-N-acetylmuramoyl-tripeptide--D-alanyl-D-alanine ligase OS=Escherichia coli (strain K12) OX=83333 GN=murF PE=1 SV=2",
         "has_sequence": true,
         "length": 452,
@@ -9913,9 +10093,9 @@
         "temperature_k": 355.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_47d8ff364736d41a",
-        "embedding_key": "seq_47d8ff364736d41a",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "47d8ff364736",
+        "embedding_key": "47d8ff364736",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -9936,6 +10116,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "47d8ff364736",
         "pair_id": "pair_01c53c2e2e1511ae",
         "sequence_id": "seq_47d8ff364736d41a",
         "substrate_id": "pubchem:439183"
@@ -9987,6 +10168,7 @@
       "record_key": "a25dd00e38530e10",
       "review_key": "f5a525916f02b24e",
       "sequence": {
+        "cache_sequence_id": "47d8ff364736",
         "fasta_header": "sp|P00558|PGK1_HUMAN Phosphoglycerate kinase 1 OS=Homo sapiens OX=9606 GN=PGK1 PE=1 SV=3",
         "has_sequence": true,
         "length": 417,
@@ -10023,9 +10205,9 @@
         "temperature_k": 355.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_47d8ff364736d41a",
-        "embedding_key": "seq_47d8ff364736d41a",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "47d8ff364736",
+        "embedding_key": "47d8ff364736",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -10046,6 +10228,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "47d8ff364736",
         "pair_id": "pair_3af5d4face35a03f",
         "sequence_id": "seq_47d8ff364736d41a",
         "substrate_id": "pubchem:439183"
@@ -10097,6 +10280,7 @@
       "record_key": "a7dcd686fe0969db",
       "review_key": "bed59b10a0fe0be2",
       "sequence": {
+        "cache_sequence_id": "47d8ff364736",
         "fasta_header": "sp|P00558|PGK1_HUMAN Phosphoglycerate kinase 1 OS=Homo sapiens OX=9606 GN=PGK1 PE=1 SV=3",
         "has_sequence": true,
         "length": 417,
@@ -10133,9 +10317,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_a4aca09e1f59d0fb",
-        "embedding_key": "seq_a4aca09e1f59d0fb",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "a4aca09e1f59",
+        "embedding_key": "a4aca09e1f59",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -10156,6 +10340,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "a4aca09e1f59",
         "pair_id": "pair_a7f2f7cb104234d1",
         "sequence_id": "seq_a4aca09e1f59d0fb",
         "substrate_id": "pubchem:5957"
@@ -10207,6 +10392,7 @@
       "record_key": "b5dbf9336f62dc30",
       "review_key": "38ea9e9ff7074c84",
       "sequence": {
+        "cache_sequence_id": "a4aca09e1f59",
         "fasta_header": "sp|P06795|MDR1B_MOUSE ATP-dependent translocase ABCB1 OS=Mus musculus OX=10090 GN=Abcb1b PE=1 SV=1",
         "has_sequence": true,
         "length": 1276,
@@ -10243,9 +10429,9 @@
         "temperature_k": 295.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_f5d1834c2b1cb001",
-        "embedding_key": "seq_f5d1834c2b1cb001",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "f5d1834c2b1c",
+        "embedding_key": "f5d1834c2b1c",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -10266,6 +10452,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "f5d1834c2b1c",
         "pair_id": "pair_374a98b225fe83da",
         "sequence_id": "seq_f5d1834c2b1cb001",
         "substrate_id": "pubchem:104745"
@@ -10317,6 +10504,7 @@
       "record_key": "c3f1269e573aacfe",
       "review_key": "8b32bc841e9b1661",
       "sequence": {
+        "cache_sequence_id": "f5d1834c2b1c",
         "fasta_header": "tr|Q4FP19|Q4FP19_PELUB 3-methylmercaptopropionyl-CoA ligase OS=Pelagibacter ubique (strain HTCC1062) OX=335992 GN=fadD PE=3 SV=1",
         "has_sequence": true,
         "length": 542,
@@ -10353,9 +10541,9 @@
         "temperature_k": 348.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_15372874f5e8e8d3",
-        "embedding_key": "seq_15372874f5e8e8d3",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "15372874f5e8",
+        "embedding_key": "15372874f5e8",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "test",
@@ -10376,6 +10564,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "15372874f5e8",
         "pair_id": "pair_18487ff112e28895",
         "sequence_id": "seq_15372874f5e8e8d3",
         "substrate_id": "pubchem:378"
@@ -10427,6 +10616,7 @@
       "record_key": "c437398587c32dba",
       "review_key": "48a6e9eb015d9f91",
       "sequence": {
+        "cache_sequence_id": "15372874f5e8",
         "fasta_header": "sp|O29777|COPA_ARCFU Probable copper-exporting P-type ATPase OS=Archaeoglobus fulgidus (strain ATCC 49558 / DSM 4304 / JCM 9628 / NBRC 100126 / VC-16) OX=224325 GN=copA PE=1 SV=1",
         "has_sequence": true,
         "length": 804,
@@ -10463,9 +10653,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_4cb4b3bc9314ee42",
-        "embedding_key": "seq_4cb4b3bc9314ee42",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "4cb4b3bc9314",
+        "embedding_key": "4cb4b3bc9314",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "test",
@@ -10486,6 +10676,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "4cb4b3bc9314",
         "pair_id": "pair_f1c41ac50caee3e3",
         "sequence_id": "seq_4cb4b3bc9314ee42",
         "substrate_id": "pubchem:644102"
@@ -10537,6 +10728,7 @@
       "record_key": "dd6dc3fb6374a307",
       "review_key": "f76b6bc88348d48c",
       "sequence": {
+        "cache_sequence_id": "4cb4b3bc9314",
         "fasta_header": "tr|Q7Z031|Q7Z031_LEIAM inorganic diphosphatase OS=Leishmania amazonensis OX=5659 PE=3 SV=1",
         "has_sequence": true,
         "length": 443,
@@ -10573,9 +10765,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_4cb4b3bc9314ee42",
-        "embedding_key": "seq_4cb4b3bc9314ee42",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "4cb4b3bc9314",
+        "embedding_key": "4cb4b3bc9314",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "test",
@@ -10596,6 +10788,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "4cb4b3bc9314",
         "pair_id": "pair_93c5a3577f24f3e9",
         "sequence_id": "seq_4cb4b3bc9314ee42",
         "substrate_id": "pubchem:3440921"
@@ -10647,6 +10840,7 @@
       "record_key": "f50127e73724fb89",
       "review_key": "078c2a9f44bd94f8",
       "sequence": {
+        "cache_sequence_id": "4cb4b3bc9314",
         "fasta_header": "tr|Q7Z031|Q7Z031_LEIAM inorganic diphosphatase OS=Leishmania amazonensis OX=5659 PE=3 SV=1",
         "has_sequence": true,
         "length": 443,
@@ -10683,9 +10877,9 @@
         "temperature_k": 303.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_cf4fa65d7386db77",
-        "embedding_key": "seq_cf4fa65d7386db77",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "cf4fa65d7386",
+        "embedding_key": "cf4fa65d7386",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -10706,6 +10900,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "cf4fa65d7386",
         "pair_id": "pair_c4d03d8ebb4cac02",
         "sequence_id": "seq_cf4fa65d7386db77",
         "substrate_id": "pubchem:5464076"
@@ -10757,6 +10952,7 @@
       "record_key": "f968a0d73be51eca",
       "review_key": "aac7e3ae8108ef1b",
       "sequence": {
+        "cache_sequence_id": "cf4fa65d7386",
         "fasta_header": "tr|A0A0M4FJ81|A0A0M4FJ81_9ACTN Two-domain laccase OS=Streptomyces griseoflavus OX=35619 PE=1 SV=1",
         "has_sequence": true,
         "length": 322,
@@ -10793,9 +10989,9 @@
         "temperature_k": 328.15
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_5df5588f23339e6a",
-        "embedding_key": "seq_5df5588f23339e6a",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "5df5588f2333",
+        "embedding_key": "5df5588f2333",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -10816,6 +11012,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "5df5588f2333",
         "pair_id": "pair_b50e9523b26ddb7f",
         "sequence_id": "seq_5df5588f23339e6a",
         "substrate_id": "pubchem:22253297"
@@ -10867,6 +11064,7 @@
       "record_key": "fcf57f85cc2a0f0a",
       "review_key": "761a1a3ae6750703",
       "sequence": {
+        "cache_sequence_id": "5df5588f2333",
         "fasta_header": "tr|Q8TLW1|Q8TLW1_METAC AMP-binding protein OS=Methanosarcina acetivorans (strain ATCC 35395 / DSM 2834 / JCM 12185 / C2A) OX=188937 GN=MA_2912 PE=1 SV=1",
         "has_sequence": true,
         "length": 560,
@@ -10903,9 +11101,9 @@
         "temperature_k": null
       },
       "demo_artifact_keys": {
-        "binding_site_prediction_key": "seq_15372874f5e8e8d3",
-        "embedding_key": "seq_15372874f5e8e8d3",
-        "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts."
+        "binding_site_prediction_key": "15372874f5e8",
+        "embedding_key": "15372874f5e8",
+        "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12]."
       },
       "demo_splits": {
         "pair_exclusive_sha256": "train",
@@ -10926,6 +11124,7 @@
         ]
       },
       "enzyme_substrate_pair": {
+        "cache_sequence_id": "15372874f5e8",
         "pair_id": "pair_594510757615c3f9",
         "sequence_id": "seq_15372874f5e8e8d3",
         "substrate_id": "pubchem:5957"
@@ -10977,6 +11176,7 @@
       "record_key": "ff45b7a91c187d2f",
       "review_key": "14b001c7d63c5e4e",
       "sequence": {
+        "cache_sequence_id": "15372874f5e8",
         "fasta_header": "sp|O29777|COPA_ARCFU Probable copper-exporting P-type ATPase OS=Archaeoglobus fulgidus (strain ATCC 49558 / DSM 4304 / JCM 9628 / NBRC 100126 / VC-16) OX=224325 GN=copA PE=1 SV=1",
         "has_sequence": true,
         "length": 804,
@@ -11066,7 +11266,8 @@
       "Substrate structures are fetched from PubChem by substrate_name.",
       "PMID/DOI lists are not present in catlog-table.jsonl.gz; only counts are included.",
       "Verification notes and raw source envelopes are not present in catlog-table.jsonl.gz.",
-      "Embeddings and pseq2sites scores are represented by join keys, not computed vectors/scores."
+      "Embeddings and pseq2sites scores are represented by join keys, not computed vectors/scores.",
+      "cache_sequence_id matches predictor seqmap IDs when no sha12 collision suffix is needed; production import can resolve exact IDs from mounted seqmap.sqlite3."
     ],
     "required_per_datapoint": [
       "record_key",

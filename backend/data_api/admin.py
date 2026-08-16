@@ -25,8 +25,14 @@ class MeasurementAdmin(admin.ModelAdmin):
 
 @admin.register(Sequence)
 class SequenceAdmin(admin.ModelAdmin):
-    list_display = ("sequence_id", "primary_uniprot_id", "length", "sequence_variant_status")
-    search_fields = ("sequence_id", "primary_uniprot_id")
+    list_display = (
+        "sequence_id",
+        "cache_sequence_id",
+        "primary_uniprot_id",
+        "length",
+        "sequence_variant_status",
+    )
+    search_fields = ("sequence_id", "cache_sequence_id", "primary_uniprot_id")
 
 
 @admin.register(Substrate)
@@ -46,4 +52,3 @@ class ReleaseArtifactAdmin(admin.ModelAdmin):
     list_display = ("artifact_key", "release", "family", "available", "relative_path")
     list_filter = ("release", "family", "available")
     search_fields = ("artifact_key", "label", "relative_path")
-

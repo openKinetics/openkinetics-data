@@ -105,6 +105,10 @@ def stable_id(prefix, *parts):
     return "%s_%s" % (prefix, sha256_text(payload)[:16])
 
 
+def predictor_cache_sequence_id(sequence):
+    return sha256_text(sequence)[:12]
+
+
 def file_sha256(path):
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
@@ -383,6 +387,7 @@ def assign_split(identifier, ratios=(0.8, 0.1, 0.1)):
 def build_datapoint(record, sequence_info, compound_info):
     sequence = sequence_info["sequence"]
     sequence_id = stable_id("seq", sequence)
+    cache_sequence_id = predictor_cache_sequence_id(sequence)
     substrate_id = compound_info["substrate_id"]
     enzyme_substrate_id = stable_id(
         "pair",
@@ -409,6 +414,7 @@ def build_datapoint(record, sequence_info, compound_info):
         },
         "sequence": {
             "sequence_id": sequence_id,
+            "cache_sequence_id": cache_sequence_id,
             "sequence": sequence,
             "length": sequence_info["length"],
             "source": sequence_info["source"],
@@ -438,6 +444,7 @@ def build_datapoint(record, sequence_info, compound_info):
         "enzyme_substrate_pair": {
             "pair_id": enzyme_substrate_id,
             "sequence_id": sequence_id,
+            "cache_sequence_id": cache_sequence_id,
             "substrate_id": substrate_id,
         },
         "measurements": {
@@ -480,9 +487,9 @@ def build_datapoint(record, sequence_info, compound_info):
             "pair_exclusive_sha256": assign_split(enzyme_substrate_id),
         },
         "demo_artifact_keys": {
-            "embedding_key": sequence_id,
-            "binding_site_prediction_key": sequence_id,
-            "note": "Keys are provided so this sample can join to future embedding and pseq2sites artifacts.",
+            "embedding_key": cache_sequence_id,
+            "binding_site_prediction_key": cache_sequence_id,
+            "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12].",
         },
     }
 

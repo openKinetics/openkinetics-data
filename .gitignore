@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 db.sqlite3
+runtime/
+mounted_sequence_info/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -18,4 +20,4 @@ frontend/yarn-debug.log*
 frontend/.env.local
 releases/*/downloads/*.zip
 releases/*/checksums.sha256
-
+releases/*/artifact_reports/

@@ -180,4 +180,3 @@ class Migration(migrations.Migration):
             constraint=models.UniqueConstraint(fields=("measurement", "split_family"), name="unique_split_family_per_measurement"),
         ),
     ]
-

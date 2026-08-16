@@ -1,0 +1,27 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data:ro
+      - ./runtime:/data/runtime
+      - ./releases:/data/releases
+      - /home/saleh/webKinPred/media/sequence_info:/sequence_info:ro
+    expose:
+      - "8010"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "${OPENKINETICS_FRONTEND_BIND:-8082}:80"
+    volumes:
+      - ./releases:/srv/openkinetics/releases:ro
+    restart: unless-stopped

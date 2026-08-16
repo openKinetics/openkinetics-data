@@ -465,7 +465,8 @@ h3 {
   gap: 10px;
 }
 
-.download-row {
+.download-row,
+.artifact-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -476,11 +477,26 @@ h3 {
   background: #fff;
 }
 
-.download-row small {
+.artifact-list {
+  display: grid;
+  gap: 10px;
+}
+
+.download-row small,
+.artifact-row small {
   display: inline-block;
   color: var(--muted);
   margin-top: 6px;
   overflow-wrap: anywhere;
+}
+
+.artifact-row h3 {
+  margin-bottom: 2px;
+}
+
+.artifact-row p {
+  color: var(--muted);
+  margin-bottom: 0;
 }
 
 .text-page {
@@ -512,7 +528,8 @@ h3 {
   .table-toolbar,
   .page-heading,
   .detail-header,
-  .download-row {
+  .download-row,
+  .artifact-row {
     flex-direction: column;
     align-items: stretch;
   }
@@ -535,4 +552,3 @@ h3 {
     grid-template-columns: 1fr;
   }
 }
-

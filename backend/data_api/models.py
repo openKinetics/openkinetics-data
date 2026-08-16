@@ -23,6 +23,7 @@ class Release(models.Model):
 
 class Sequence(models.Model):
     sequence_id = models.CharField(max_length=80, unique=True)
+    cache_sequence_id = models.CharField(max_length=80, blank=True, db_index=True)
     primary_uniprot_id = models.CharField(max_length=40, db_index=True)
     sequence = models.TextField()
     length = models.PositiveIntegerField()
@@ -120,10 +121,16 @@ class Measurement(models.Model):
             )
         ]
         indexes = [
-            models.Index(fields=["release", "ec_class"]),
-            models.Index(fields=["release", "source_db"]),
-            models.Index(fields=["release", "verification_status"]),
-            models.Index(fields=["release", "primary_uniprot_id"]),
+            models.Index(fields=["release", "ec_class"], name="data_api_me_release_d4651e_idx"),
+            models.Index(fields=["release", "source_db"], name="data_api_me_release_6ecff2_idx"),
+            models.Index(
+                fields=["release", "verification_status"],
+                name="data_api_me_release_28965b_idx",
+            ),
+            models.Index(
+                fields=["release", "primary_uniprot_id"],
+                name="data_api_me_release_a2b2d5_idx",
+            ),
         ]
 
     def __str__(self):
@@ -174,4 +181,3 @@ class ReleaseArtifact(models.Model):
 
     def __str__(self):
         return "%s:%s" % (self.release.release_id, self.artifact_key)
-

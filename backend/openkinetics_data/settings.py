@@ -35,6 +35,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -87,12 +88,33 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BACKEND_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BACKEND_DIR / "media"
 
 RELEASES_ROOT = Path(os.environ.get("OPENKINETICS_RELEASES_ROOT", str(BASE_DIR / "releases")))
 RELEASES_URL_BASE = os.environ.get("OPENKINETICS_RELEASES_URL_BASE", "/releases")
+SEQUENCE_INFO_ROOT = Path(
+    os.environ.get(
+        "OPENKINETICS_SEQUENCE_INFO_ROOT",
+        str(BASE_DIR / "mounted_sequence_info"),
+    )
+)
+SEQUENCE_ARTIFACTS_URL_BASE = os.environ.get(
+    "OPENKINETICS_SEQUENCE_ARTIFACTS_URL_BASE",
+    "/sequence-artifacts",
+)
+
+SEQUENCE_ARTIFACT_ROOTS = {
+    "esm2_residue": os.environ.get("OPENKINETICS_ESM2_RESIDUE_ROOT", "esm2_layer_26/residue_vecs"),
+    "esmc_residue": os.environ.get("OPENKINETICS_ESMC_RESIDUE_ROOT", "esmc_layer_32/residue_vecs"),
+    "prot_t5_residue": os.environ.get(
+        "OPENKINETICS_PROT_T5_RESIDUE_ROOT",
+        "prot_t5_layer_19/residue_vecs",
+    ),
+    "pseq2sites_scores": os.environ.get("OPENKINETICS_PSEQ2SITES_ROOT", "pseq2sites_scores"),
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

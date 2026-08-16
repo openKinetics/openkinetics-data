@@ -15,6 +15,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/health/", health, name="health"),
     path("api/", include("data_api.urls")),
+    path("sequence-artifacts/", include("data_api.urls")),
 ]
 
 if settings.DEBUG:
