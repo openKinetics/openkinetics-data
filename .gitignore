@@ -21,3 +21,4 @@ frontend/.env.local
 releases/*/downloads/*.zip
 releases/*/checksums.sha256
 releases/*/artifact_reports/
+releases/**/*.gz
