@@ -20,6 +20,7 @@ import {
 } from "./api";
 
 const catlogUrl = "https://chowdhurylab.github.io/tools/catlog-static/";
+const chowdhuryLabUrl = "https://chowdhurylab.github.io/";
 const realKcatDoi = "https://doi.org/10.1101/2025.02.10.637555";
 
 function formatNumber(value) {
@@ -99,7 +100,9 @@ function Layout() {
         </Routes>
       </main>
       <footer className="footer">
-        <span>CatLog data from Chowdhury Lab collaborators.</span>
+        <span>
+          CatLog data from <a href={chowdhuryLabUrl}>Chowdhury Lab</a> collaborators.
+        </span>
         <a href={catlogUrl}>CatLog static browser</a>
         <a href="https://predictor.openkinetics.org">Kinetics predictor</a>
       </footer>
@@ -112,8 +115,8 @@ function AttributionBanner() {
     <section className="catlog-banner">
       <div>
         <strong>CatLog-powered data portal.</strong> This resource is built from CatLog, developed
-        by the Chowdhury Lab and collaborators. The full CatLog paper is coming soon; for now cite
-        RealKcat.
+        by the <a href={chowdhuryLabUrl}>Chowdhury Lab</a> and collaborators. The full CatLog paper
+        is coming soon; for now cite RealKcat.
       </div>
       <div className="banner-actions">
         <a href={catlogUrl}>
@@ -555,8 +558,9 @@ function CitationPage() {
       <section className="panel wide-panel">
         <h2>CatLog</h2>
         <p>
-          This data resource is built from CatLog, developed by the Chowdhury Lab and
-          collaborators. The full CatLog publication is coming soon.
+          This data resource is built from CatLog, developed by the{" "}
+          <a href={chowdhuryLabUrl}>Chowdhury Lab</a> and collaborators. The full CatLog publication
+          is coming soon.
         </p>
         <p>
           CatLog static browser: <a href={catlogUrl}>{catlogUrl}</a>

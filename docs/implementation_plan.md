@@ -12,7 +12,7 @@ coming soon; for now the site cites RealKcat:
 
 https://doi.org/10.1101/2025.02.10.637555
 
-It also links to the Chowdhury Lab CatLog browser:
+It also links to the [Chowdhury Lab](https://chowdhurylab.github.io/) CatLog browser:
 
 https://chowdhurylab.github.io/tools/catlog-static/
 
@@ -97,4 +97,3 @@ All are keyed by `sequence_id`.
 8. Write checksums.
 9. Import searchable metadata into Django.
 10. Publish immutable release and update `latest`.
-

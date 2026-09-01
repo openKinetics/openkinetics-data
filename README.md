@@ -20,8 +20,9 @@ the full CatLog source snapshot.
 
 ## Attribution
 
-This data resource is built from CatLog, developed by the Chowdhury Lab and
-collaborators. The full CatLog publication is coming soon. For now, please cite:
+This data resource is built from CatLog, developed by the
+[Chowdhury Lab](https://chowdhurylab.github.io/) and collaborators. The full
+CatLog publication is coming soon. For now, please cite:
 
 Sajeevan et al., Robust Prediction of Enzyme Variant Kinetics with RealKcat,
 bioRxiv 2025, DOI: https://doi.org/10.1101/2025.02.10.637555
