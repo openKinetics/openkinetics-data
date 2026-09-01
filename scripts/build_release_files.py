@@ -224,8 +224,8 @@ def main():
     enriched_manifest = dict(manifest)
     enriched_manifest["schema"] = sample.get("schema", {})
     enriched_manifest["download_note"] = (
-        "Large embeddings and Pseq2Sites artifacts are stored as mounted server files keyed by "
-        "sequence_id, matching the predictor seqmap IDs."
+        "Large embeddings and Pseq2Sites artifacts are distributed as ZIP packages containing "
+        "sequence metadata plus predictor arrays keyed by sequence_id."
     )
     write_json(release_dir / "manifest.json", enriched_manifest)
 
@@ -276,6 +276,12 @@ def main():
         "pseq2sites": os.environ.get("OPENKINETICS_PSEQ2SITES_ROOT", "pseq2sites_scores"),
         "join_key": "sequence_id",
         "filename_pattern": "{sequence_id}.npy",
+        "bundle_metadata": {
+            "sequence_metadata": "metadata/sequences.jsonl",
+            "artifact_metadata": "metadata/artifacts.jsonl",
+            "pseq2sites_scores": "pseq2sites/scores.jsonl.gz",
+            "embedding_index_pattern": "embeddings/{model_key}/index.jsonl.gz",
+        },
     }
     write_json(release_dir / "expected_generated_artifacts.json", expected)
 

@@ -4,25 +4,40 @@
 import argparse
 import gzip
 import hashlib
+import io
 import json
 import os
+import sys
 import zipfile
 from pathlib import Path
 
 
+BACKEND_DIR = Path(__file__).resolve().parents[1] / "backend"
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+
+from data_api.npy_utils import NpyReadError, read_npy_flat_numbers, read_npy_metadata  # noqa: E402
+
+
 DEFAULT_RELEASES_DIR = os.environ.get("OPENKINETICS_RELEASES_ROOT", "releases")
 DEFAULT_SEQUENCE_INFO_ROOT = os.environ.get("OPENKINETICS_SEQUENCE_INFO_ROOT", "/sequence_info")
+SEQUENCE_METADATA_PATH = "metadata/sequences.jsonl"
+ARTIFACT_METADATA_PATH = "metadata/artifacts.jsonl"
 
 ARTIFACT_SPECS = {
     "esm2": {
         "source_root": os.environ.get("OPENKINETICS_ESM2_RESIDUE_ROOT", "esm2_layer_26/residue_vecs"),
         "bundle": "downloads/openkinetics-demo-esm2-residue-vecs.zip",
         "bundle_prefix": "embeddings/esm2/residue_vecs",
+        "array_kind": "embedding",
+        "records_path": "embeddings/esm2/index.jsonl.gz",
     },
     "esmc": {
         "source_root": os.environ.get("OPENKINETICS_ESMC_RESIDUE_ROOT", "esmc_layer_32/residue_vecs"),
         "bundle": "downloads/openkinetics-demo-esmc-residue-vecs.zip",
         "bundle_prefix": "embeddings/esmc/residue_vecs",
+        "array_kind": "embedding",
+        "records_path": "embeddings/esmc/index.jsonl.gz",
     },
     "prot_t5": {
         "source_root": os.environ.get(
@@ -31,11 +46,15 @@ ARTIFACT_SPECS = {
         ),
         "bundle": "downloads/openkinetics-demo-prot-t5-residue-vecs.zip",
         "bundle_prefix": "embeddings/prot_t5/residue_vecs",
+        "array_kind": "embedding",
+        "records_path": "embeddings/prot_t5/index.jsonl.gz",
     },
     "pseq2sites": {
         "source_root": os.environ.get("OPENKINETICS_PSEQ2SITES_ROOT", "pseq2sites_scores"),
         "bundle": "downloads/openkinetics-demo-pseq2sites-scores.zip",
         "bundle_prefix": "pseq2sites/scores",
+        "array_kind": "scores",
+        "records_path": "pseq2sites/scores.jsonl.gz",
     },
 }
 
@@ -76,22 +95,117 @@ def write_json(path, payload):
         handle.write("\n")
 
 
+def jsonl_text(rows):
+    return "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows)
+
+
+def gzip_text(text):
+    buffer = io.BytesIO()
+    with gzip.GzipFile(fileobj=buffer, mode="wb", mtime=0) as handle:
+        handle.write(text.encode("utf-8"))
+    return buffer.getvalue()
+
+
+def public_sequence_fields(row):
+    return {
+        "sequence_id": row["sequence_id"],
+        "sequence": row["sequence"],
+        "length": row.get("length"),
+        "primary_uniprot_id": row.get("primary_uniprot_id"),
+        "fasta_header": row.get("fasta_header"),
+        "source_url": row.get("source_url"),
+        "sequence_variant_status": row.get("sequence_variant_status"),
+        "mutation_signature": row.get("mutation_signature"),
+        "wild_type": row.get("wild_type"),
+    }
+
+
+def public_record(record):
+    return {
+        key: value
+        for key, value in record.items()
+        if key not in ("source_path",)
+    }
+
+
+def sequence_artifact_record(row, source_path, archive_path, available):
+    record = {
+        **public_sequence_fields(row),
+        "artifact_available": available,
+        "artifact_path": archive_path if available else "",
+        "array_shape": None,
+        "array_dtype": "",
+        "size_bytes": None,
+        "sha256": "",
+    }
+    if not available:
+        return record
+    try:
+        metadata = read_npy_metadata(source_path)
+        record["array_shape"] = metadata["shape"]
+        record["array_dtype"] = metadata["dtype"]
+    except (OSError, NpyReadError) as exc:
+        record["array_metadata_error"] = str(exc)
+    record["size_bytes"] = source_path.stat().st_size
+    record["sha256"] = sha256_file(source_path)
+    return record
+
+
+def score_rows(found):
+    rows = []
+    errors = []
+    for item in found:
+        source_path = Path(item["source_path"])
+        try:
+            scores = read_npy_flat_numbers(source_path, max_items=max(item.get("length") or 0, 10000))
+        except (OSError, NpyReadError) as exc:
+            errors.append({"sequence_id": item["sequence_id"], "error": str(exc)})
+            continue
+        finite_scores = [score for score in scores if score is not None]
+        summary = {
+            "min": min(finite_scores) if finite_scores else None,
+            "max": max(finite_scores) if finite_scores else None,
+            "mean": sum(finite_scores) / len(finite_scores) if finite_scores else None,
+        }
+        rows.append(
+            {
+                "sequence_id": item["sequence_id"],
+                "sequence": item["sequence"],
+                "scores": scores,
+                "score_count": len(scores),
+                "aligned_to_sequence": len(scores) == len(item["sequence"]),
+                "summary": summary,
+            }
+        )
+    return rows, errors
+
+
 def build_model_bundle(release_dir, sequence_info_root, model_key, spec, sequences):
     source_root = (sequence_info_root / spec["source_root"]).resolve()
     bundle_path = release_dir / spec["bundle"]
     found = []
     missing = []
+    sequence_records = []
     for row in sequences:
         sequence_id = row["sequence_id"]
         source_path = source_root / ("%s.npy" % sequence_id)
+        archive_path = "%s/%s.npy" % (spec["bundle_prefix"], sequence_id)
+        available = source_path.exists() and source_path.is_file()
+        artifact_record = sequence_artifact_record(row, source_path, archive_path, available)
+        sequence_records.append(artifact_record)
         item = {
-            "sequence_id": sequence_id,
+            **artifact_record,
             "source_path": str(source_path),
         }
-        if source_path.exists() and source_path.is_file():
-            found.append({**item, "size_bytes": source_path.stat().st_size})
+        if available:
+            found.append(item)
         else:
             missing.append(item)
+
+    readable_score_rows = []
+    score_parse_errors = []
+    if spec["array_kind"] == "scores":
+        readable_score_rows, score_parse_errors = score_rows(found)
 
     report = {
         "model_key": model_key,
@@ -99,9 +213,16 @@ def build_model_bundle(release_dir, sequence_info_root, model_key, spec, sequenc
         "total_sequences": len(sequences),
         "found": len(found),
         "missing": len(missing),
-        "missing_sequences": missing,
+        "missing_sequences": [public_record(row) for row in missing],
         "join_key": "sequence_id",
-        "file_format": "NumPy .npy",
+        "file_format": "ZIP with JSONL metadata and NumPy .npy arrays",
+        "array_kind": spec["array_kind"],
+        "sequence_metadata_path": SEQUENCE_METADATA_PATH,
+        "artifact_metadata_path": ARTIFACT_METADATA_PATH,
+        "records_path": spec["records_path"],
+        "array_file_pattern": "%s/{sequence_id}.npy" % spec["bundle_prefix"],
+        "score_rows": len(readable_score_rows),
+        "score_parse_errors": score_parse_errors,
     }
     write_json(release_dir / "artifact_reports" / ("%s.json" % model_key), report)
 
@@ -113,10 +234,15 @@ def build_model_bundle(release_dir, sequence_info_root, model_key, spec, sequenc
     with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
         bundle.writestr("README.txt", bundle_readme(model_key, spec, report))
         bundle.writestr("manifest.json", json.dumps(report, indent=2, sort_keys=True) + "\n")
+        bundle.writestr(SEQUENCE_METADATA_PATH, jsonl_text([public_record(row) for row in sequence_records]))
+        bundle.writestr(ARTIFACT_METADATA_PATH, jsonl_text([public_record(row) for row in found]))
+        if spec["array_kind"] == "scores" and readable_score_rows:
+            bundle.writestr(spec["records_path"], gzip_text(jsonl_text(readable_score_rows)))
+        elif spec["array_kind"] == "embedding":
+            bundle.writestr(spec["records_path"], gzip_text(jsonl_text([public_record(row) for row in found])))
         for item in found:
             source_path = Path(item["source_path"])
-            arcname = "%s/%s.npy" % (spec["bundle_prefix"], item["sequence_id"])
-            bundle.write(source_path, arcname=arcname)
+            bundle.write(source_path, arcname=item["artifact_path"])
     return report
 
 
@@ -128,12 +254,20 @@ def bundle_readme(model_key, spec, report):
         "source_root: %s\n"
         "found: %s\n"
         "missing: %s\n"
-        "format: NumPy .npy\n"
+        "format: ZIP with JSONL metadata and NumPy .npy arrays\n"
+        "sequence_metadata: %s\n"
+        "artifact_metadata: %s\n"
+        "records: %s\n"
+        "array_file_pattern: %s/{sequence_id}.npy\n"
     ) % (
         model_key,
         spec["source_root"],
         report["found"],
         report["missing"],
+        SEQUENCE_METADATA_PATH,
+        ARTIFACT_METADATA_PATH,
+        spec["records_path"],
+        spec["bundle_prefix"],
     )
 
 

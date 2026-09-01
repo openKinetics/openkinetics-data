@@ -45,6 +45,20 @@ function formatBytes(bytes) {
   return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 }
 
+function formatScore(value) {
+  if (typeof value !== "number") return "n/a";
+  return value.toFixed(3);
+}
+
+function residueScoreStyle(score) {
+  if (typeof score !== "number") return undefined;
+  const value = Math.max(0, Math.min(1, score));
+  if (value >= 0.75) return { backgroundColor: "#b91c1c", color: "#fff" };
+  if (value >= 0.5) return { backgroundColor: "#f97316", color: "#231407" };
+  if (value >= 0.25) return { backgroundColor: "#fde68a", color: "#27200a" };
+  return { backgroundColor: "#dbeafe", color: "#10233f" };
+}
+
 function useAsync(factory, deps) {
   const [state, setState] = useState({ loading: true, error: "", data: null });
 
@@ -404,18 +418,7 @@ function RecordPage() {
           <p className="evidence-note">{row.evidence.compact_evidence_summary}</p>
         </Panel>
 
-        <Panel title="Protein sequence">
-          <dl className="key-values">
-            <dt>Sequence ID</dt><dd>{row.sequence.sequence_id}</dd>
-            <dt>UniProt</dt>
-            <dd>
-              <a href={row.sequence.source_url}>{row.enzyme.primary_uniprot_id}</a>
-            </dd>
-            <dt>Length</dt><dd>{row.sequence.length} aa</dd>
-            <dt>Variant</dt><dd>{row.sequence.sequence_variant_status}</dd>
-          </dl>
-          <pre className="sequence-block">{row.sequence.sequence}</pre>
-        </Panel>
+        <ProteinSequencePanel row={row} />
 
         <Panel title="Sequence artifacts">
           <div className="artifact-list">
@@ -427,17 +430,18 @@ function RecordPage() {
                   <small>
                     {artifact.available
                       ? `${formatBytes(artifact.size_bytes)} · ${artifact.relative_path}`
-                      : `Awaiting ${artifact.sequence_id}.npy`}
+                      : `Awaiting ${artifact.source_filename || `${artifact.sequence_id}.npy`}`}
                   </small>
                 </div>
                 {artifact.available ? (
                   <a className="icon-button" href={artifact.url}>
                     <Download size={16} aria-hidden="true" />
-                    Download
+                    Download ZIP
                   </a>
                 ) : (
                   <span className="pending-pill">Awaiting file</span>
                 )}
+                <DownloadFormatDetails artifact={artifact} />
               </article>
             ))}
           </div>
@@ -456,6 +460,89 @@ function RecordPage() {
           <code className="smiles-line">{row.substrate.smiles}</code>
         </Panel>
       </section>
+    </div>
+  );
+}
+
+function ProteinSequencePanel({ row }) {
+  return (
+    <Panel title="Protein sequence">
+      <dl className="key-values">
+        <dt>Sequence ID</dt><dd>{row.sequence.sequence_id}</dd>
+        <dt>UniProt</dt>
+        <dd>
+          <a href={row.sequence.source_url}>{row.enzyme.primary_uniprot_id}</a>
+        </dd>
+        <dt>Length</dt><dd>{row.sequence.length} aa</dd>
+        <dt>Variant</dt><dd>{row.sequence.sequence_variant_status}</dd>
+      </dl>
+      <BindingSiteLegend prediction={row.binding_site_prediction} />
+      <SequenceHeatmap
+        prediction={row.binding_site_prediction}
+        sequence={row.sequence.sequence}
+      />
+    </Panel>
+  );
+}
+
+function BindingSiteLegend({ prediction }) {
+  const available = prediction?.available && prediction?.scores?.length;
+  if (!available) {
+    return (
+      <div className="binding-site-summary muted">
+        <strong>Pseq2Sites binding-site likelihood</strong>
+        <span>{prediction?.message || "Scores are not available for this sequence."}</span>
+      </div>
+    );
+  }
+  const summary = prediction.summary || {};
+  const alignment = prediction.aligned_to_sequence
+    ? `${prediction.score_count} scores aligned to ${prediction.residue_count} residues`
+    : `${prediction.score_count} scores for ${prediction.residue_count} residues`;
+  return (
+    <div className="binding-site-summary">
+      <div>
+        <strong>Pseq2Sites binding-site likelihood</strong>
+        <span>{alignment}</span>
+      </div>
+      <div className="score-legend" aria-label="Binding-site likelihood scale">
+        <span>Low</span>
+        <div className="score-ramp" />
+        <span>High</span>
+      </div>
+      <dl className="score-stats">
+        <dt>Mean</dt><dd>{formatScore(summary.mean)}</dd>
+        <dt>Max</dt><dd>{formatScore(summary.max)}</dd>
+      </dl>
+    </div>
+  );
+}
+
+function SequenceHeatmap({ sequence, prediction }) {
+  const residues = sequence ? sequence.split("") : [];
+  const scores = prediction?.scores || [];
+  const hasScores = prediction?.available && scores.length > 0;
+  return (
+    <div
+      className={`sequence-heatmap ${hasScores ? "" : "sequence-heatmap-plain"}`}
+      aria-label="Protein sequence colored by Pseq2Sites binding-site likelihood"
+    >
+      {residues.map((residue, index) => {
+        const score = typeof scores[index] === "number" ? scores[index] : null;
+        const title = score === null
+          ? `Residue ${index + 1}: ${residue}`
+          : `Residue ${index + 1}: ${residue}, Pseq2Sites ${formatScore(score)}`;
+        return (
+          <span
+            className="residue-token"
+            key={`${index}-${residue}`}
+            style={hasScores ? residueScoreStyle(score) : undefined}
+            title={title}
+          >
+            {residue}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -508,10 +595,60 @@ function ArtifactGroup({ title, artifacts }) {
             ) : (
               <span className="pending-pill">Awaiting file</span>
             )}
+            <DownloadFormatDetails artifact={artifact} />
           </article>
         ))}
       </div>
     </section>
+  );
+}
+
+function DownloadFormatDetails({ artifact }) {
+  const details = artifact.metadata?.format_details || artifact.format_details;
+  if (!details) return null;
+  return (
+    <details className="download-details">
+      <summary>
+        <FileText size={15} aria-hidden="true" />
+        Format details
+      </summary>
+      <div className="download-details-body">
+        {details.summary ? <p>{details.summary}</p> : null}
+        {details.files?.length ? (
+          <table className="format-table">
+            <thead>
+              <tr>
+                <th>Path</th>
+                <th>Format</th>
+                <th>Contents</th>
+              </tr>
+            </thead>
+            <tbody>
+              {details.files.map((file) => (
+                <tr key={`${artifact.artifact_key}-${file.path}`}>
+                  <td><code>{file.path}</code></td>
+                  <td>{file.format}</td>
+                  <td>{file.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
+        {details.fields?.length ? (
+          <div className="field-list">
+            <strong>Fields</strong>
+            <div>
+              {details.fields.map((field) => <code key={`${artifact.artifact_key}-${field}`}>{field}</code>)}
+            </div>
+          </div>
+        ) : null}
+        {details.notes?.length ? (
+          <ul className="format-notes">
+            {details.notes.map((note) => <li key={`${artifact.artifact_key}-${note}`}>{note}</li>)}
+          </ul>
+        ) : null}
+      </div>
+    </details>
   );
 }
 

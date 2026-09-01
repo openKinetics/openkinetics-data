@@ -93,7 +93,7 @@ release directory.
 
 Sequence artifact files are keyed by `sequence_id`, matching the predictor
 `seqmap.sqlite3` ID where possible and otherwise using `sha256(sequence)[:12]`.
-Per-record artifact downloads point to mounted `.npy` files such as:
+Mounted source arrays live at paths such as:
 
 ```text
 /sequence_info/esm2_layer_26/residue_vecs/{sequence_id}.npy
@@ -101,3 +101,11 @@ Per-record artifact downloads point to mounted `.npy` files such as:
 /sequence_info/prot_t5_layer_19/residue_vecs/{sequence_id}.npy
 /sequence_info/pseq2sites_scores/{sequence_id}.npy
 ```
+
+Per-record artifact downloads are served as ZIP packages containing
+`README.txt`, `manifest.json`, `sequence.json`, and the raw `.npy` array.
+Pseq2Sites downloads also include a readable `pseq2sites/scores.json` payload
+with `sequence_id`, `sequence`, and per-residue scores when the score vector can
+be parsed. Release-level embedding and Pseq2Sites bundles include
+`metadata/sequences.jsonl` and `metadata/artifacts.jsonl` so every array is
+distributed with its amino-acid sequence.

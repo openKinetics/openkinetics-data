@@ -6,7 +6,7 @@ from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 
 from .models import Measurement, Release, ReleaseArtifact, Sequence, Substrate
-from .sequence_artifacts import SEQUENCE_ARTIFACT_DEFINITIONS, artifact_path
+from .sequence_artifacts import SEQUENCE_ARTIFACT_DEFINITIONS, artifact_path, sequence_artifact_archive
 from .serializers import (
     artifact_payload,
     measurement_detail,
@@ -190,9 +190,10 @@ def sequence_artifact_download(_request, sequence_id, artifact_key):
     path = artifact_path(sequence.sequence_id, artifact_key)
     if not path or not path.exists() or not path.is_file():
         raise Http404("Sequence artifact is not available.")
-    filename = "%s_%s" % (sequence.sequence_id, definition["filename_suffix"])
+    archive = sequence_artifact_archive(sequence, artifact_key, path)
+    filename = "%s_%s" % (sequence.sequence_id, definition["download_filename_suffix"])
     return FileResponse(
-        open(path, "rb"),
+        archive,
         as_attachment=True,
         filename=filename,
         content_type=definition["content_type"],

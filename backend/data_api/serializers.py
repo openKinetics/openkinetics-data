@@ -1,6 +1,6 @@
 """JSON serializers for the public API."""
 
-from .sequence_artifacts import sequence_artifacts_payload
+from .sequence_artifacts import pseq2sites_prediction_payload, sequence_artifacts_payload
 
 
 def metric_payload(value, unit):
@@ -120,6 +120,7 @@ def measurement_detail(measurement):
                 "compact_evidence_summary": measurement.compact_evidence_summary,
             },
             "splits": split_payload(measurement),
+            "binding_site_prediction": pseq2sites_prediction_payload(measurement.sequence),
             "sequence_artifacts": sequence_artifacts_payload(measurement.sequence),
         }
     )

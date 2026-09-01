@@ -24,7 +24,7 @@
     "unique_sequences": 71,
     "unique_substrates": 83
   },
-  "download_note": "Large embeddings and Pseq2Sites artifacts are stored as mounted server files keyed by sequence_id, matching the predictor seqmap IDs.",
+  "download_note": "Large embeddings and Pseq2Sites artifacts are distributed as ZIP packages containing sequence metadata plus predictor arrays keyed by sequence_id.",
   "generated_at": "2026-08-10T11:06:25Z",
   "record_count": 100,
   "release_id": "openkinetics-catlog-demo-2026-08",

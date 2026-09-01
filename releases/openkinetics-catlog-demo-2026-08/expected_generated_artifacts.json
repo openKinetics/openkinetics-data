@@ -1,4 +1,10 @@
 {
+  "bundle_metadata": {
+    "artifact_metadata": "metadata/artifacts.jsonl",
+    "embedding_index_pattern": "embeddings/{model_key}/index.jsonl.gz",
+    "pseq2sites_scores": "pseq2sites/scores.jsonl.gz",
+    "sequence_metadata": "metadata/sequences.jsonl"
+  },
   "embeddings": {
     "esm2": "esm2_layer_26/residue_vecs",
     "esmc": "esmc_layer_32/residue_vecs",
