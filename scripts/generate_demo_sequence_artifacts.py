@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Generate demo sequence embeddings and Pseq2Sites score artifacts.
+"""Generate OpenKinetics demo sequence artifact arrays via the GPU service.
 
-This script is intended to run on the GPU server that has the webKinPred
-checkout, predictor seqmap database, KinForm models, and conda environments.
-It resolves the committed demo sequences through the predictor seqmap DB, then
-generates the release-facing per-sequence arrays under:
+Default mode is for the production data server:
 
-  {KINFORM_MEDIA_PATH}/sequence_info/esm2_layer_26/residue_vecs/{sequence_id}.npy
-  {KINFORM_MEDIA_PATH}/sequence_info/esmc_layer_32/residue_vecs/{sequence_id}.npy
-  {KINFORM_MEDIA_PATH}/sequence_info/prot_t5_layer_19/residue_vecs/{sequence_id}.npy
-  {KINFORM_MEDIA_PATH}/sequence_info/pseq2sites_scores/{sequence_id}.npy
+  python3 scripts/generate_demo_sequence_artifacts.py
+
+It resolves the committed demo sequences through the predictor seqmap DB,
+submits the missing sequence IDs to the remote GPU embedding service, waits for
+completion, validates the shared artifact cache, then rebuilds release bundles.
+
+GPU worker mode is for GPU_EMBED_STEP_CMD_OPENKINETICS_DEMO_SEQUENCE_ARTIFACTS:
+
+  python3 scripts/generate_demo_sequence_artifacts.py --worker-mode \
+    --seq-id-to-seq-file {seq_id_to_seq_file}
 """
 
 from __future__ import annotations
@@ -17,18 +20,24 @@ from __future__ import annotations
 import argparse
 import csv
 import gzip
+import hashlib
 import importlib.util
 import json
 import os
 import pickle
 import shlex
+import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
 
 
 DEFAULT_RELEASE_ID = "openkinetics-catlog-demo-2026-08"
@@ -38,6 +47,7 @@ DEFAULT_RELEASES_DIR = Path(
     os.environ.get("OPENKINETICS_RELEASES_ROOT", str(OPENKINETICS_REPO_ROOT / "releases"))
 )
 DEFAULT_WEBKINPRED_ROOT = Path(os.environ.get("GPU_EMBED_REPO_ROOT", "/home/saleh/webKinPred"))
+DEFAULT_GPU_STEP_KEY = "openkinetics_demo_sequence_artifacts"
 
 MODEL_ORDER = ("prot_t5", "esm2", "esmc", "pseq2sites")
 ARTIFACT_ROOTS = {
@@ -99,6 +109,52 @@ class PreparedInputs:
     seq_id_to_seq_json: Path
 
 
+class LocalSeqmapDb:
+    """Fallback copy of tools/seqmap/utils/db.py for production-only checkouts."""
+
+    @staticmethod
+    def open_db(db_path: str) -> sqlite3.Connection:
+        con = sqlite3.connect(
+            db_path,
+            timeout=5,
+            isolation_level=None,
+            check_same_thread=False,
+        )
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("PRAGMA synchronous=NORMAL")
+        con.execute("PRAGMA temp_store=MEMORY")
+        return con
+
+    @staticmethod
+    def get_or_create_id(con: sqlite3.Connection, sequence: str) -> str:
+        sha = hashlib.sha256(sequence.encode("utf-8")).hexdigest()
+        con.execute(
+            "UPDATE sequences SET last_seen_at=CURRENT_TIMESTAMP, "
+            "uses_count=uses_count+1 WHERE sha256=?",
+            (sha,),
+        )
+        row = con.execute("SELECT id FROM sequences WHERE sha256=?", (sha,)).fetchone()
+        if row:
+            return str(row[0])
+
+        base = sha[:12]
+        suffix = 0
+        while True:
+            candidate = base if suffix == 0 else f"{base}_{suffix}"
+            try:
+                con.execute(
+                    "INSERT INTO sequences(id, seq, sha256, len, created_at, last_seen_at, uses_count) "
+                    "VALUES(?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1)",
+                    (candidate, sequence, sha, len(sequence)),
+                )
+                return candidate
+            except sqlite3.IntegrityError:
+                row = con.execute("SELECT id FROM sequences WHERE sha256=?", (sha,)).fetchone()
+                if row:
+                    return str(row[0])
+                suffix += 1
+
+
 def positive_int(raw: str) -> int:
     value = int(raw)
     if value <= 0:
@@ -108,6 +164,19 @@ def positive_int(raw: str) -> int:
 
 def repo_path(raw: str | Path) -> Path:
     return Path(raw).expanduser().resolve()
+
+
+def default_sequence_info_root() -> str:
+    configured = str(os.environ.get("OPENKINETICS_SEQUENCE_INFO_ROOT", "")).strip()
+    if configured:
+        return configured
+    media_path = str(os.environ.get("KINFORM_MEDIA_PATH", "")).strip()
+    if media_path:
+        return str((Path(media_path).expanduser() / "sequence_info").resolve())
+    candidate = Path("/sequence_info")
+    if candidate.exists():
+        return str(candidate)
+    return str((DEFAULT_WEBKINPRED_ROOT / "media" / "sequence_info").resolve())
 
 
 def python_in_home_env(env_name: str) -> str:
@@ -131,13 +200,62 @@ def env_int(env: dict[str, str], names: tuple[str, ...], default: int) -> int:
 def load_seqmap_db_module(webkinpred_root: Path):
     module_path = webkinpred_root / "tools" / "seqmap" / "utils" / "db.py"
     if not module_path.exists():
-        raise SystemExit(f"Seqmap DB helper not found: {module_path}")
+        return LocalSeqmapDb
     spec = importlib.util.spec_from_file_location("webkinpred_seqmap_db", module_path)
     if spec is None or spec.loader is None:
-        raise SystemExit(f"Could not load seqmap DB helper: {module_path}")
+        return LocalSeqmapDb
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def dry_run_resolve_seqmap_ids(
+    raw_rows: list[tuple[str, str]],
+    *,
+    seqmap_db: Path,
+) -> list[DemoSequence] | None:
+    if not seqmap_db.exists():
+        print(f"seqmap_db={seqmap_db} is missing; dry run will use committed sequence IDs.")
+        found_ids: dict[str, str] = {}
+    else:
+        sha_by_sequence = {
+            sequence: hashlib.sha256(sequence.encode("utf-8")).hexdigest()
+            for _source_sequence_id, sequence in raw_rows
+        }
+        found_ids = {}
+        uri = f"file:{seqmap_db}?mode=ro"
+        with sqlite3.connect(uri, uri=True) as con:
+            for sequence, sha in sha_by_sequence.items():
+                row = con.execute("SELECT id FROM sequences WHERE sha256=?", (sha,)).fetchone()
+                if row:
+                    found_ids[sequence] = str(row[0])
+
+    by_sequence: dict[str, dict[str, object]] = {}
+    for source_sequence_id, sequence in raw_rows:
+        sequence_id = found_ids.get(sequence)
+        if not sequence_id:
+            sequence_id = source_sequence_id or hashlib.sha256(sequence.encode("utf-8")).hexdigest()[:12]
+        item = by_sequence.setdefault(
+            sequence,
+            {
+                "sequence_id": sequence_id,
+                "source_sequence_id": source_sequence_id or sequence_id,
+                "record_count": 0,
+            },
+        )
+        item["record_count"] = int(item["record_count"]) + 1
+    return sorted(
+        [
+            DemoSequence(
+                sequence_id=str(item["sequence_id"]),
+                source_sequence_id=str(item["source_sequence_id"]),
+                sequence=sequence,
+                record_count=int(item["record_count"]),
+            )
+            for sequence, item in by_sequence.items()
+        ],
+        key=lambda row: row.sequence_id,
+    )
 
 
 def clean_sequence(sequence: str) -> str:
@@ -172,13 +290,37 @@ def load_sequences_from_release(release_dir: Path) -> tuple[list[tuple[str, str]
     return rows, len(rows)
 
 
+def load_sequences_from_worker_file(path: Path) -> list[DemoSequence]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Expected seq_id_to_seq object in {path}")
+    rows = [
+        DemoSequence(
+            sequence_id=str(sequence_id).strip(),
+            source_sequence_id=str(sequence_id).strip(),
+            sequence=clean_sequence(sequence),
+            record_count=1,
+        )
+        for sequence_id, sequence in payload.items()
+        if str(sequence_id).strip() and clean_sequence(sequence)
+    ]
+    return sorted(rows, key=lambda row: row.sequence_id)
+
+
 def resolve_demo_sequences(
     raw_rows: list[tuple[str, str]],
     *,
     seqmap_db: Path,
     webkinpred_root: Path,
     allow_id_mismatch: bool,
+    dry_run: bool,
 ) -> list[DemoSequence]:
+    if dry_run:
+        return dry_run_resolve_seqmap_ids(raw_rows, seqmap_db=seqmap_db) or []
+
+    if not seqmap_db.exists():
+        raise SystemExit(f"seqmap DB not found: {seqmap_db}")
+
     seqmap_db.parent.mkdir(parents=True, exist_ok=True)
     seqmap_module = load_seqmap_db_module(webkinpred_root)
     con = seqmap_module.open_db(str(seqmap_db))
@@ -262,14 +404,14 @@ def build_kinform_env(webkinpred_root: Path, media_path: Path, tools_path: Path)
     return env
 
 
-def artifact_path(media_path: Path, model_key: str, sequence_id: str) -> Path:
-    return media_path / "sequence_info" / ARTIFACT_ROOTS[model_key] / f"{sequence_id}.npy"
+def artifact_path(sequence_info_root: Path, model_key: str, sequence_id: str) -> Path:
+    return sequence_info_root / ARTIFACT_ROOTS[model_key] / f"{sequence_id}.npy"
 
 
 def missing_artifact_ids(
     sequences: list[DemoSequence],
     *,
-    media_path: Path,
+    sequence_info_root: Path,
     model_key: str,
     force: bool,
 ) -> list[str]:
@@ -278,8 +420,30 @@ def missing_artifact_ids(
     return [
         row.sequence_id
         for row in sequences
-        if not artifact_path(media_path, model_key, row.sequence_id).exists()
+        if not artifact_path(sequence_info_root, model_key, row.sequence_id).exists()
     ]
+
+
+def ids_missing_any_artifact(
+    sequences: list[DemoSequence],
+    *,
+    sequence_info_root: Path,
+    models: list[str],
+    force: bool,
+) -> list[str]:
+    if force:
+        return [row.sequence_id for row in sequences]
+    missing: set[str] = set()
+    for model_key in models:
+        missing.update(
+            missing_artifact_ids(
+                sequences,
+                sequence_info_root=sequence_info_root,
+                model_key=model_key,
+                force=False,
+            )
+        )
+    return sorted(missing)
 
 
 @contextmanager
@@ -463,6 +627,7 @@ def convert_pseq2sites_scores(
     *,
     sequences: list[DemoSequence],
     media_path: Path,
+    sequence_info_root: Path,
     force: bool,
     dry_run: bool,
 ) -> None:
@@ -479,7 +644,7 @@ def convert_pseq2sites_scores(
     wrote = 0
     skipped = 0
     for row in sequences:
-        out_path = artifact_path(media_path, "pseq2sites", row.sequence_id)
+        out_path = artifact_path(sequence_info_root, "pseq2sites", row.sequence_id)
         if out_path.exists() and not force:
             skipped += 1
             continue
@@ -499,7 +664,7 @@ def convert_pseq2sites_scores(
 def validate_artifacts(
     *,
     sequences: list[DemoSequence],
-    media_path: Path,
+    sequence_info_root: Path,
     models: list[str],
 ) -> None:
     import numpy as np
@@ -507,7 +672,7 @@ def validate_artifacts(
     errors: list[str] = []
     for model_key in models:
         for row in sequences:
-            path = artifact_path(media_path, model_key, row.sequence_id)
+            path = artifact_path(sequence_info_root, model_key, row.sequence_id)
             if not path.exists():
                 errors.append(f"{model_key}:{row.sequence_id} missing {path}")
                 continue
@@ -543,7 +708,7 @@ def build_release_bundles(
     *,
     release_id: str,
     releases_dir: Path,
-    media_path: Path,
+    sequence_info_root: Path,
     dry_run: bool,
 ) -> None:
     cmd = [
@@ -554,9 +719,378 @@ def build_release_bundles(
         "--releases-dir",
         str(releases_dir),
         "--sequence-info-root",
-        str(media_path / "sequence_info"),
+        str(sequence_info_root),
     ]
     run_command(cmd, env=dict(os.environ), cwd=OPENKINETICS_REPO_ROOT, dry_run=dry_run)
+
+
+def auth_headers(token: str) -> dict[str, str]:
+    headers = {"Accept": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def http_json(
+    method: str,
+    url: str,
+    *,
+    token: str,
+    payload: dict[str, Any] | None = None,
+    timeout: float,
+) -> dict[str, Any]:
+    body: bytes | None = None
+    headers = auth_headers(token)
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    request = urllib.request.Request(url=url, method=method.upper(), data=body, headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code} from {url}: {detail}") from exc
+    data = json.loads(raw) if raw else {}
+    if not isinstance(data, dict):
+        raise RuntimeError(f"Expected JSON object from {url}, got {type(data).__name__}")
+    return data
+
+
+def fetch_job_log_tail(base_url: str, job_id: str, *, token: str, tail: int, timeout: float) -> str:
+    try:
+        payload = http_json(
+            "GET",
+            f"{base_url}/embed/jobs/{urllib.parse.quote(job_id)}/logs?tail={tail}",
+            token=token,
+            timeout=timeout,
+        )
+    except Exception as exc:
+        return f"(could not fetch GPU job logs: {exc})"
+    return str(payload.get("log_tail") or "")
+
+
+def submit_gpu_service_job(
+    *,
+    base_url: str,
+    token: str,
+    step_key: str,
+    sequence_ids: list[str],
+    sequences: list[DemoSequence],
+    timeout: float,
+    dry_run: bool,
+) -> str | None:
+    selected_ids = set(sequence_ids)
+    seq_id_to_seq = {
+        row.sequence_id: row.sequence
+        for row in sequences
+        if row.sequence_id in selected_ids
+    }
+    payload = {
+        "method_key": "OpenKinetics-Data",
+        "target": "demo_sequence_artifacts",
+        "profile": "release_residue_matrices",
+        "step_work": {step_key: sequence_ids},
+        "seq_id_to_seq": seq_id_to_seq,
+    }
+    print(
+        "gpu_service_submit "
+        f"url={base_url}/embed/jobs step={step_key} sequences={len(sequence_ids)}"
+    )
+    if dry_run:
+        print(json.dumps({**payload, "seq_id_to_seq": f"<{len(seq_id_to_seq)} sequences>"}, indent=2))
+        return None
+    response = http_json(
+        "POST",
+        f"{base_url}/embed/jobs",
+        token=token,
+        payload=payload,
+        timeout=timeout,
+    )
+    job_id = str(response.get("job_id") or "").strip()
+    if not job_id:
+        raise RuntimeError(f"GPU service did not return job_id: {response}")
+    print(f"gpu_job_id={job_id}")
+    return job_id
+
+
+def wait_for_gpu_job(
+    *,
+    base_url: str,
+    token: str,
+    job_id: str,
+    poll_interval: float,
+    timeout_seconds: int,
+    http_timeout: float,
+    log_interval: int,
+    log_tail: int,
+) -> dict[str, Any]:
+    started_at = time.monotonic()
+    deadline = started_at + timeout_seconds
+    next_log_at = started_at + log_interval
+    last_status = ""
+    while True:
+        status = http_json(
+            "GET",
+            f"{base_url}/embed/jobs/{urllib.parse.quote(job_id)}",
+            token=token,
+            timeout=http_timeout,
+        )
+        state = str(status.get("status") or "").strip().lower()
+        if state != last_status:
+            print(f"gpu_job_status={state or 'unknown'}")
+            last_status = state
+        if state in {"done", "completed"}:
+            return status
+        if state in {"failed", "error"}:
+            logs = fetch_job_log_tail(
+                base_url,
+                job_id,
+                token=token,
+                tail=log_tail,
+                timeout=http_timeout,
+            )
+            raise RuntimeError(f"GPU job failed: {status}\n--- GPU log tail ---\n{logs}")
+
+        now = time.monotonic()
+        if now >= deadline:
+            logs = fetch_job_log_tail(
+                base_url,
+                job_id,
+                token=token,
+                tail=log_tail,
+                timeout=http_timeout,
+            )
+            raise RuntimeError(
+                f"Timed out waiting for GPU job {job_id} after {timeout_seconds}s.\n"
+                f"--- GPU log tail ---\n{logs}"
+            )
+        if now >= next_log_at:
+            logs = fetch_job_log_tail(
+                base_url,
+                job_id,
+                token=token,
+                tail=log_tail,
+                timeout=http_timeout,
+            )
+            if logs:
+                print("--- GPU log tail ---")
+                print(logs)
+            next_log_at = now + log_interval
+        time.sleep(poll_interval)
+
+
+def check_gpu_health(base_url: str, *, token: str, timeout: float, dry_run: bool) -> None:
+    print(f"gpu_service_health url={base_url}/health")
+    if dry_run:
+        return
+    health = http_json("GET", f"{base_url}/health", token=token, timeout=timeout)
+    if not health.get("online", True):
+        raise RuntimeError(f"GPU service is offline: {health}")
+    print(
+        "gpu_service_online "
+        f"gpu={health.get('gpu_name') or 'unknown'} "
+        f"active_jobs={health.get('active_jobs')} queued_jobs={health.get('queued_jobs')}"
+    )
+
+
+def gpu_step_command_export(step_key: str) -> str:
+    env_key = f"GPU_EMBED_STEP_CMD_{step_key.upper()}"
+    script_path = OPENKINETICS_REPO_ROOT / "scripts" / "generate_demo_sequence_artifacts.py"
+    command = (
+        f"/usr/bin/python3 {script_path} --worker-mode "
+        "--seq-id-to-seq-file {seq_id_to_seq_file}"
+    )
+    return f'export {env_key}="{command}"'
+
+
+def selected_models(args: argparse.Namespace) -> list[str]:
+    requested = set(args.models)
+    return [model for model in MODEL_ORDER if model in requested]
+
+
+def run_worker_mode(args: argparse.Namespace) -> int:
+    if args.seq_id_to_seq_file:
+        sequences = load_sequences_from_worker_file(repo_path(args.seq_id_to_seq_file))
+    else:
+        webkinpred_root = repo_path(args.webkinpred_root)
+        sequence_info_root = repo_path(args.sequence_info_root)
+        seqmap_db = repo_path(args.seqmap_db) if args.seqmap_db else (
+            sequence_info_root / "seqmap.sqlite3"
+        ).resolve()
+        releases_dir = repo_path(args.releases_dir)
+        if args.source == "sample":
+            raw_rows, _source_count = load_sequences_from_sample(repo_path(args.sample_path))
+        else:
+            raw_rows, _source_count = load_sequences_from_release(releases_dir / args.release_id)
+        sequences = resolve_demo_sequences(
+            raw_rows,
+            seqmap_db=seqmap_db,
+            webkinpred_root=webkinpred_root,
+            allow_id_mismatch=args.allow_id_mismatch,
+            dry_run=args.dry_run,
+        )
+
+    if not sequences:
+        raise SystemExit("No protein sequences found for worker mode.")
+
+    webkinpred_root = repo_path(args.webkinpred_root)
+    media_path = repo_path(args.media_path) if args.media_path else (webkinpred_root / "media").resolve()
+    tools_path = repo_path(args.tools_path) if args.tools_path else (webkinpred_root / "tools").resolve()
+    sequence_info_root = media_path / "sequence_info"
+    env = build_kinform_env(webkinpred_root, media_path, tools_path)
+    models = selected_models(args)
+    batch_sizes = {
+        "prot_t5": args.prot_t5_batch_size or env_int(env, BATCH_SIZE_ENVS["prot_t5"], 1),
+        "esm2": args.esm2_batch_size or env_int(env, BATCH_SIZE_ENVS["esm2"], 1),
+        "esmc": args.esmc_batch_size or env_int(env, BATCH_SIZE_ENVS["esmc"], 1),
+        "pseq2sites": args.pseq2sites_batch_size or env_int(env, BATCH_SIZE_ENVS["pseq2sites"], 4),
+    }
+
+    print(f"worker_mode=1 unique_sequences={len(sequences)} media_path={media_path}")
+    print(f"models={','.join(models)}")
+    if args.validate_only:
+        validate_artifacts(sequences=sequences, sequence_info_root=sequence_info_root, models=models)
+        return 0
+
+    for model_key in models:
+        if model_key == "pseq2sites":
+            continue
+        sequence_ids = missing_artifact_ids(
+            sequences,
+            sequence_info_root=sequence_info_root,
+            model_key=model_key,
+            force=args.force,
+        )
+        generate_residue_embeddings(
+            model_key=model_key,
+            sequence_ids=sequence_ids,
+            sequences=sequences,
+            env=env,
+            webkinpred_root=webkinpred_root,
+            dry_run=args.dry_run,
+            batch_size=batch_sizes[model_key],
+        )
+
+    if "pseq2sites" in models:
+        binding_sites_path = media_path / "pseq2sites" / "binding_sites_all.tsv"
+        existing_rows = read_binding_site_rows(binding_sites_path)
+        missing_tsv_ids = [row.sequence_id for row in sequences if row.sequence_id not in existing_rows]
+        run_pseq2sites(
+            sequences=sequences,
+            sequence_ids=missing_tsv_ids,
+            env=env,
+            webkinpred_root=webkinpred_root,
+            dry_run=args.dry_run,
+            batch_size=batch_sizes["pseq2sites"],
+        )
+        if not args.dry_run:
+            convert_pseq2sites_scores(
+                sequences=sequences,
+                media_path=media_path,
+                sequence_info_root=sequence_info_root,
+                force=args.force,
+                dry_run=args.dry_run,
+            )
+        else:
+            print("pseq2sites: dry run skipped TSV-to-npy conversion.")
+
+    if not args.skip_validation and not args.dry_run:
+        validate_artifacts(sequences=sequences, sequence_info_root=sequence_info_root, models=models)
+    return 0
+
+
+def run_production_mode(args: argparse.Namespace) -> int:
+    webkinpred_root = repo_path(args.webkinpred_root)
+    sequence_info_root = repo_path(args.sequence_info_root)
+    releases_dir = repo_path(args.releases_dir)
+    seqmap_db = repo_path(args.seqmap_db) if args.seqmap_db else (
+        sequence_info_root / "seqmap.sqlite3"
+    ).resolve()
+
+    if args.source == "sample":
+        raw_rows, source_count = load_sequences_from_sample(repo_path(args.sample_path))
+    else:
+        raw_rows, source_count = load_sequences_from_release(releases_dir / args.release_id)
+    sequences = resolve_demo_sequences(
+        raw_rows,
+        seqmap_db=seqmap_db,
+        webkinpred_root=webkinpred_root,
+        allow_id_mismatch=args.allow_id_mismatch,
+        dry_run=args.dry_run,
+    )
+    if not sequences:
+        raise SystemExit("No protein sequences found.")
+
+    models = selected_models(args)
+    print(f"source={args.source} source_rows={source_count} raw_sequence_rows={len(raw_rows)}")
+    print(f"unique_sequences={len(sequences)} seqmap_db={seqmap_db}")
+    print(f"sequence_info_root={sequence_info_root}")
+    print(f"models={','.join(models)}")
+
+    if args.validate_only:
+        validate_artifacts(sequences=sequences, sequence_info_root=sequence_info_root, models=models)
+        return 0
+
+    missing_ids = ids_missing_any_artifact(
+        sequences,
+        sequence_info_root=sequence_info_root,
+        models=models,
+        force=args.force,
+    )
+    print(f"sequences_missing_any_selected_artifact={len(missing_ids)}")
+
+    if missing_ids:
+        base_url = str(args.gpu_service_url).strip().rstrip("/")
+        token = str(args.gpu_service_token).strip()
+        if not base_url and not args.dry_run:
+            raise SystemExit("GPU_EMBED_SERVICE_URL is required.")
+        if not token and not args.dry_run:
+            raise SystemExit("GPU_EMBED_SERVICE_TOKEN is required.")
+        if base_url:
+            check_gpu_health(
+                base_url,
+                token=token,
+                timeout=args.http_timeout,
+                dry_run=args.dry_run,
+            )
+        job_id = submit_gpu_service_job(
+            base_url=base_url or "<GPU_EMBED_SERVICE_URL>",
+            token=token,
+            step_key=args.gpu_step_key,
+            sequence_ids=missing_ids,
+            sequences=sequences,
+            timeout=args.http_timeout,
+            dry_run=args.dry_run,
+        )
+        if job_id and not args.submit_only:
+            wait_for_gpu_job(
+                base_url=base_url,
+                token=token,
+                job_id=job_id,
+                poll_interval=args.poll_interval,
+                timeout_seconds=args.gpu_job_timeout,
+                http_timeout=args.http_timeout,
+                log_interval=args.log_interval,
+                log_tail=args.log_tail,
+            )
+        elif job_id:
+            print(f"submitted_only gpu_job_id={job_id}")
+            return 0
+    else:
+        print("All selected sequence artifacts already exist; skipping GPU service submission.")
+
+    if not args.skip_validation and not args.dry_run:
+        validate_artifacts(sequences=sequences, sequence_info_root=sequence_info_root, models=models)
+
+    if not args.skip_release_bundles:
+        build_release_bundles(
+            release_id=args.release_id,
+            releases_dir=releases_dir,
+            sequence_info_root=sequence_info_root,
+            dry_run=args.dry_run,
+        )
+    return 0
 
 
 def parse_args() -> argparse.Namespace:
@@ -570,21 +1104,22 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--release-id", default=DEFAULT_RELEASE_ID)
     parser.add_argument("--releases-dir", default=str(DEFAULT_RELEASES_DIR))
+    parser.add_argument("--sequence-info-root", default=default_sequence_info_root())
     parser.add_argument("--webkinpred-root", default=str(DEFAULT_WEBKINPRED_ROOT))
     parser.add_argument(
         "--media-path",
         default=os.environ.get("KINFORM_MEDIA_PATH", ""),
-        help="KinForm media root. Defaults to {webkinpred-root}/media.",
+        help="GPU worker KinForm media root. Defaults to {webkinpred-root}/media.",
     )
     parser.add_argument(
         "--tools-path",
         default="",
-        help="webKinPred tools root. Defaults to {webkinpred-root}/tools.",
+        help="GPU worker webKinPred tools root. Defaults to {webkinpred-root}/tools.",
     )
     parser.add_argument(
         "--seqmap-db",
         default=os.environ.get("SEQMAP_DB", ""),
-        help="Predictor seqmap.sqlite3 path. Defaults to {media-path}/sequence_info/seqmap.sqlite3.",
+        help="Predictor seqmap.sqlite3 path. Defaults to {sequence-info-root}/seqmap.sqlite3.",
     )
     parser.add_argument(
         "--models",
@@ -599,10 +1134,26 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Continue if committed sequence_id values differ from predictor seqmap IDs.",
     )
-    parser.add_argument("--dry-run", action="store_true", help="Print commands without running them.")
+    parser.add_argument("--dry-run", action="store_true", help="Print work without executing it.")
     parser.add_argument("--validate-only", action="store_true", help="Only validate existing artifacts.")
     parser.add_argument("--skip-validation", action="store_true")
     parser.add_argument("--skip-release-bundles", action="store_true")
+    parser.add_argument("--worker-mode", action="store_true")
+    parser.add_argument(
+        "--seq-id-to-seq-file",
+        default="",
+        help="GPU worker JSON mapping created by gpu_embed_service.",
+    )
+    parser.add_argument("--gpu-service-url", default=os.environ.get("GPU_EMBED_SERVICE_URL", ""))
+    parser.add_argument("--gpu-service-token", default=os.environ.get("GPU_EMBED_SERVICE_TOKEN", ""))
+    parser.add_argument("--gpu-step-key", default=os.environ.get("OPENKINETICS_GPU_STEP_KEY", DEFAULT_GPU_STEP_KEY))
+    parser.add_argument("--print-gpu-step-command", action="store_true")
+    parser.add_argument("--gpu-job-timeout", type=positive_int, default=21600)
+    parser.add_argument("--http-timeout", type=float, default=5.0)
+    parser.add_argument("--poll-interval", type=float, default=2.0)
+    parser.add_argument("--log-interval", type=positive_int, default=120)
+    parser.add_argument("--log-tail", type=positive_int, default=200)
+    parser.add_argument("--submit-only", action="store_true")
     parser.add_argument("--prot-t5-batch-size", type=positive_int, default=None)
     parser.add_argument("--esm2-batch-size", type=positive_int, default=None)
     parser.add_argument("--esmc-batch-size", type=positive_int, default=None)
@@ -612,100 +1163,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    webkinpred_root = repo_path(args.webkinpred_root)
-    media_path = repo_path(args.media_path) if args.media_path else (webkinpred_root / "media").resolve()
-    tools_path = repo_path(args.tools_path) if args.tools_path else (webkinpred_root / "tools").resolve()
-    releases_dir = repo_path(args.releases_dir)
-    seqmap_db = repo_path(args.seqmap_db) if args.seqmap_db else (
-        media_path / "sequence_info" / "seqmap.sqlite3"
-    ).resolve()
-
-    if args.source == "sample":
-        raw_rows, source_count = load_sequences_from_sample(repo_path(args.sample_path))
-    else:
-        raw_rows, source_count = load_sequences_from_release(releases_dir / args.release_id)
-    sequences = resolve_demo_sequences(
-        raw_rows,
-        seqmap_db=seqmap_db,
-        webkinpred_root=webkinpred_root,
-        allow_id_mismatch=args.allow_id_mismatch,
-    )
-    if not sequences:
-        raise SystemExit("No protein sequences found.")
-
-    env = build_kinform_env(webkinpred_root, media_path, tools_path)
-    selected_models = [model for model in MODEL_ORDER if model in set(args.models)]
-    batch_sizes = {
-        "prot_t5": args.prot_t5_batch_size or env_int(env, BATCH_SIZE_ENVS["prot_t5"], 1),
-        "esm2": args.esm2_batch_size or env_int(env, BATCH_SIZE_ENVS["esm2"], 1),
-        "esmc": args.esmc_batch_size or env_int(env, BATCH_SIZE_ENVS["esmc"], 1),
-        "pseq2sites": args.pseq2sites_batch_size or env_int(env, BATCH_SIZE_ENVS["pseq2sites"], 4),
-    }
-
-    print(f"source={args.source} source_rows={source_count} raw_sequence_rows={len(raw_rows)}")
-    print(f"unique_sequences={len(sequences)} seqmap_db={seqmap_db}")
-    print(f"media_path={media_path}")
-    print(f"models={','.join(selected_models)}")
-
-    if args.validate_only:
-        validate_artifacts(sequences=sequences, media_path=media_path, models=selected_models)
+    if args.print_gpu_step_command:
+        print(gpu_step_command_export(args.gpu_step_key))
         return 0
-
-    for model_key in selected_models:
-        if model_key == "pseq2sites":
-            continue
-        sequence_ids = missing_artifact_ids(
-            sequences,
-            media_path=media_path,
-            model_key=model_key,
-            force=args.force,
-        )
-        generate_residue_embeddings(
-            model_key=model_key,
-            sequence_ids=sequence_ids,
-            sequences=sequences,
-            env=env,
-            webkinpred_root=webkinpred_root,
-            dry_run=args.dry_run,
-            batch_size=batch_sizes[model_key],
-        )
-
-    if "pseq2sites" in selected_models:
-        binding_sites_path = media_path / "pseq2sites" / "binding_sites_all.tsv"
-        existing_rows = read_binding_site_rows(binding_sites_path)
-        missing_tsv_ids = [
-            row.sequence_id for row in sequences if row.sequence_id not in existing_rows
-        ]
-        run_pseq2sites(
-            sequences=sequences,
-            sequence_ids=missing_tsv_ids,
-            env=env,
-            webkinpred_root=webkinpred_root,
-            dry_run=args.dry_run,
-            batch_size=batch_sizes["pseq2sites"],
-        )
-        if not args.dry_run:
-            convert_pseq2sites_scores(
-                sequences=sequences,
-                media_path=media_path,
-                force=args.force,
-                dry_run=args.dry_run,
-            )
-        else:
-            print("pseq2sites: dry run skipped TSV-to-npy conversion.")
-
-    if not args.skip_validation and not args.dry_run:
-        validate_artifacts(sequences=sequences, media_path=media_path, models=selected_models)
-
-    if not args.skip_release_bundles:
-        build_release_bundles(
-            release_id=args.release_id,
-            releases_dir=releases_dir,
-            media_path=media_path,
-            dry_run=args.dry_run,
-        )
-
-    return 0
+    if args.worker_mode:
+        return run_worker_mode(args)
+    return run_production_mode(args)
 
 
 if __name__ == "__main__":
