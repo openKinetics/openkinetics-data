@@ -266,11 +266,11 @@ def main():
             "/sequence_info",
         ),
         "embeddings": {
-            "esm2": os.environ.get("OPENKINETICS_ESM2_RESIDUE_ROOT", "esm2_layer_26/residue_vecs"),
+            "esm2": os.environ.get("OPENKINETICS_ESM2_RESIDUE_ROOT", "esm2_layer_33/residue_vecs"),
             "esmc": os.environ.get("OPENKINETICS_ESMC_RESIDUE_ROOT", "esmc_layer_32/residue_vecs"),
             "prot_t5": os.environ.get(
                 "OPENKINETICS_PROT_T5_RESIDUE_ROOT",
-                "prot_t5_layer_19/residue_vecs",
+                "prot_t5_last/residue_vecs",
             ),
         },
         "pseq2sites": os.environ.get("OPENKINETICS_PSEQ2SITES_ROOT", "pseq2sites_scores"),

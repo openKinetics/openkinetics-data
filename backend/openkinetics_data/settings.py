@@ -107,11 +107,11 @@ SEQUENCE_ARTIFACTS_URL_BASE = os.environ.get(
 )
 
 SEQUENCE_ARTIFACT_ROOTS = {
-    "esm2_residue": os.environ.get("OPENKINETICS_ESM2_RESIDUE_ROOT", "esm2_layer_26/residue_vecs"),
+    "esm2_residue": os.environ.get("OPENKINETICS_ESM2_RESIDUE_ROOT", "esm2_layer_33/residue_vecs"),
     "esmc_residue": os.environ.get("OPENKINETICS_ESMC_RESIDUE_ROOT", "esmc_layer_32/residue_vecs"),
     "prot_t5_residue": os.environ.get(
         "OPENKINETICS_PROT_T5_RESIDUE_ROOT",
-        "prot_t5_layer_19/residue_vecs",
+        "prot_t5_last/residue_vecs",
     ),
     "pseq2sites_scores": os.environ.get("OPENKINETICS_PSEQ2SITES_ROOT", "pseq2sites_scores"),
 }

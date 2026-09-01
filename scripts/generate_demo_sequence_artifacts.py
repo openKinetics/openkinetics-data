@@ -63,8 +63,8 @@ DEFAULT_GPU_WORKER_SCRIPT = Path(
 
 MODEL_ORDER = ("prot_t5", "esm2", "esmc", "pseq2sites")
 ARTIFACT_ROOTS = {
-    "prot_t5": "prot_t5_layer_19/residue_vecs",
-    "esm2": "esm2_layer_26/residue_vecs",
+    "prot_t5": "prot_t5_last/residue_vecs",
+    "esm2": "esm2_layer_33/residue_vecs",
     "esmc": "esmc_layer_32/residue_vecs",
     "pseq2sites": "pseq2sites_scores",
 }
@@ -531,9 +531,9 @@ def generate_residue_embeddings(
             "residue",
         ]
         if model_key == "prot_t5":
-            cmd.extend(["--layers", "19"])
+            cmd.extend(["--layers", "None"])
         elif model_key == "esm2":
-            cmd.extend(["--models", "esm2", "--layers", "26"])
+            cmd.extend(["--models", "esm2", "--layers", "33"])
         elif model_key == "esmc":
             cmd.extend(["--models", "esmc", "--layers", "32"])
         else:

@@ -26,7 +26,7 @@ ARTIFACT_METADATA_PATH = "metadata/artifacts.jsonl"
 
 ARTIFACT_SPECS = {
     "esm2": {
-        "source_root": os.environ.get("OPENKINETICS_ESM2_RESIDUE_ROOT", "esm2_layer_26/residue_vecs"),
+        "source_root": os.environ.get("OPENKINETICS_ESM2_RESIDUE_ROOT", "esm2_layer_33/residue_vecs"),
         "bundle": "downloads/openkinetics-demo-esm2-residue-vecs.zip",
         "bundle_prefix": "embeddings/esm2/residue_vecs",
         "array_kind": "embedding",
@@ -42,7 +42,7 @@ ARTIFACT_SPECS = {
     "prot_t5": {
         "source_root": os.environ.get(
             "OPENKINETICS_PROT_T5_RESIDUE_ROOT",
-            "prot_t5_layer_19/residue_vecs",
+            "prot_t5_last/residue_vecs",
         ),
         "bundle": "downloads/openkinetics-demo-prot-t5-residue-vecs.zip",
         "bundle_prefix": "embeddings/prot_t5/residue_vecs",

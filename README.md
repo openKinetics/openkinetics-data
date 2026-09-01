@@ -96,9 +96,9 @@ Sequence artifact files are keyed by `sequence_id`, matching the predictor
 Mounted source arrays live at paths such as:
 
 ```text
-/sequence_info/esm2_layer_26/residue_vecs/{sequence_id}.npy
+/sequence_info/esm2_layer_33/residue_vecs/{sequence_id}.npy
 /sequence_info/esmc_layer_32/residue_vecs/{sequence_id}.npy
-/sequence_info/prot_t5_layer_19/residue_vecs/{sequence_id}.npy
+/sequence_info/prot_t5_last/residue_vecs/{sequence_id}.npy
 /sequence_info/pseq2sites_scores/{sequence_id}.npy
 ```
 
