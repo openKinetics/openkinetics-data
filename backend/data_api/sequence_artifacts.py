@@ -1,4 +1,4 @@
-"""Helpers for predictor-cache sequence artifact downloads.
+"""Helpers for predictor sequence artifact downloads.
 
 The predictor app stores sequence artifacts under media/sequence_info using
 seqmap IDs generated from sha256(sequence)[:12], with suffixes only if a rare
@@ -48,11 +48,11 @@ def sequence_sha256(sequence):
     return hashlib.sha256(sequence.encode("utf-8")).hexdigest()
 
 
-def fallback_cache_sequence_id(sequence):
+def fallback_sequence_id(sequence):
     return sequence_sha256(sequence)[:12]
 
 
-def resolve_cache_sequence_id(sequence):
+def resolve_sequence_id(sequence):
     """Return the predictor seqmap ID if the mounted DB exists, otherwise sha12."""
     root = Path(settings.SEQUENCE_INFO_ROOT)
     db_path = root / "seqmap.sqlite3"
@@ -66,16 +66,16 @@ def resolve_cache_sequence_id(sequence):
                     return row[0]
         except sqlite3.Error:
             pass
-    return sha[:12]
+    return fallback_sequence_id(sequence)
 
 
-def artifact_path(cache_sequence_id, artifact_key):
+def artifact_path(sequence_id, artifact_key):
     definition = SEQUENCE_ARTIFACT_DEFINITIONS.get(artifact_key)
     if not definition:
         return None
     rel_root = settings.SEQUENCE_ARTIFACT_ROOTS[definition["root_setting"]]
     root = (Path(settings.SEQUENCE_INFO_ROOT) / rel_root).resolve()
-    path = (root / ("%s.npy" % cache_sequence_id)).resolve()
+    path = (root / ("%s.npy" % sequence_id)).resolve()
     try:
         path.relative_to(root)
     except ValueError:
@@ -85,27 +85,27 @@ def artifact_path(cache_sequence_id, artifact_key):
 
 def sequence_artifact_payload(sequence, artifact_key):
     definition = SEQUENCE_ARTIFACT_DEFINITIONS[artifact_key]
-    cache_sequence_id = sequence.cache_sequence_id or fallback_cache_sequence_id(sequence.sequence)
-    path = artifact_path(cache_sequence_id, artifact_key)
+    sequence_id = sequence.sequence_id or fallback_sequence_id(sequence.sequence)
+    path = artifact_path(sequence_id, artifact_key)
     sequence_info_root = Path(settings.SEQUENCE_INFO_ROOT).resolve()
     available = bool(path and path.exists() and path.is_file())
-    relative_cache_path = ""
+    relative_path = ""
     if path:
         try:
-            relative_cache_path = str(path.relative_to(sequence_info_root))
+            relative_path = str(path.relative_to(sequence_info_root))
         except ValueError:
-            relative_cache_path = str(path)
+            relative_path = str(path)
     url_base = settings.SEQUENCE_ARTIFACTS_URL_BASE.rstrip("/")
     payload = {
         "artifact_key": artifact_key,
         "label": definition["label"],
         "description": definition["description"],
-        "cache_sequence_id": cache_sequence_id,
+        "sequence_id": sequence_id,
         "content_type": definition["content_type"],
         "available": available,
-        "url": "%s/sequences/%s/%s/" % (url_base, sequence.sequence_id, artifact_key),
+        "url": "%s/sequences/%s/artifacts/%s/" % (url_base, sequence_id, artifact_key),
         "size_bytes": path.stat().st_size if available else None,
-        "relative_cache_path": relative_cache_path,
+        "relative_path": relative_path,
     }
     return payload
 

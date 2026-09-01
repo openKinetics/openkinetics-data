@@ -24,7 +24,7 @@
     "unique_sequences": 71,
     "unique_substrates": 83
   },
-  "download_note": "Large embeddings and Pseq2Sites artifacts are stored as mounted server files keyed by cache_sequence_id, matching the predictor seqmap IDs.",
+  "download_note": "Large embeddings and Pseq2Sites artifacts are stored as mounted server files keyed by sequence_id, matching the predictor seqmap IDs.",
   "generated_at": "2026-08-10T11:06:25Z",
   "record_count": 100,
   "release_id": "openkinetics-catlog-demo-2026-08",
@@ -34,8 +34,8 @@
       "Substrate structures are fetched from PubChem by substrate_name.",
       "PMID/DOI lists are not present in catlog-table.jsonl.gz; only counts are included.",
       "Verification notes and raw source envelopes are not present in catlog-table.jsonl.gz.",
-      "Embeddings and pseq2sites scores are represented by join keys, not computed vectors/scores.",
-      "cache_sequence_id matches predictor seqmap IDs when no sha12 collision suffix is needed; production import can resolve exact IDs from mounted seqmap.sqlite3."
+      "Embeddings and pseq2sites scores are keyed by sequence_id, not embedded in this sample.",
+      "sequence_id is the predictor seqmap ID when available and otherwise sha256(sequence)[:12]."
     ],
     "required_per_datapoint": [
       "record_key",
@@ -49,8 +49,7 @@
       "assay_conditions",
       "provenance",
       "evidence",
-      "demo_splits",
-      "demo_artifact_keys"
+      "demo_splits"
     ]
   },
   "source": {

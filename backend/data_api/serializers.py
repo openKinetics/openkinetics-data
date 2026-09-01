@@ -14,7 +14,6 @@ def metric_payload(value, unit):
 def sequence_payload(sequence, include_sequence=False):
     payload = {
         "sequence_id": sequence.sequence_id,
-        "cache_sequence_id": sequence.cache_sequence_id,
         "primary_uniprot_id": sequence.primary_uniprot_id,
         "length": sequence.length,
         "source": sequence.source,
@@ -121,12 +120,6 @@ def measurement_detail(measurement):
                 "compact_evidence_summary": measurement.compact_evidence_summary,
             },
             "splits": split_payload(measurement),
-            "artifact_keys": {
-                "sequence_id": measurement.sequence.sequence_id,
-                "cache_sequence_id": measurement.sequence.cache_sequence_id,
-                "embedding_key": measurement.sequence.cache_sequence_id,
-                "binding_site_prediction_key": measurement.sequence.cache_sequence_id,
-            },
             "sequence_artifacts": sequence_artifacts_payload(measurement.sequence),
         }
     )

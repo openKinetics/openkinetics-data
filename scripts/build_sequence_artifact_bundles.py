@@ -40,10 +40,6 @@ ARTIFACT_SPECS = {
 }
 
 
-def sha256_text(text):
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
 def sha256_file(path):
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
@@ -60,8 +56,7 @@ def load_sequences(release_dir):
             if not line.strip():
                 continue
             row = json.loads(line)
-            cache_id = row.get("cache_sequence_id") or sha256_text(row["sequence"])[:12]
-            sequences.append({**row, "cache_sequence_id": cache_id})
+            sequences.append(row)
     return sequences
 
 
@@ -87,11 +82,10 @@ def build_model_bundle(release_dir, sequence_info_root, model_key, spec, sequenc
     found = []
     missing = []
     for row in sequences:
-        cache_id = row["cache_sequence_id"]
-        source_path = source_root / ("%s.npy" % cache_id)
+        sequence_id = row["sequence_id"]
+        source_path = source_root / ("%s.npy" % sequence_id)
         item = {
-            "sequence_id": row["sequence_id"],
-            "cache_sequence_id": cache_id,
+            "sequence_id": sequence_id,
             "source_path": str(source_path),
         }
         if source_path.exists() and source_path.is_file():
@@ -106,7 +100,7 @@ def build_model_bundle(release_dir, sequence_info_root, model_key, spec, sequenc
         "found": len(found),
         "missing": len(missing),
         "missing_sequences": missing,
-        "join_key": "cache_sequence_id",
+        "join_key": "sequence_id",
         "file_format": "NumPy .npy",
     }
     write_json(release_dir / "artifact_reports" / ("%s.json" % model_key), report)
@@ -121,7 +115,7 @@ def build_model_bundle(release_dir, sequence_info_root, model_key, spec, sequenc
         bundle.writestr("manifest.json", json.dumps(report, indent=2, sort_keys=True) + "\n")
         for item in found:
             source_path = Path(item["source_path"])
-            arcname = "%s/%s.npy" % (spec["bundle_prefix"], item["cache_sequence_id"])
+            arcname = "%s/%s.npy" % (spec["bundle_prefix"], item["sequence_id"])
             bundle.write(source_path, arcname=arcname)
     return report
 
@@ -130,7 +124,7 @@ def bundle_readme(model_key, spec, report):
     return (
         "OpenKinetics Data sequence artifact bundle\n"
         "model_key: %s\n"
-        "join_key: cache_sequence_id\n"
+        "join_key: sequence_id\n"
         "source_root: %s\n"
         "found: %s\n"
         "missing: %s\n"
@@ -220,4 +214,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -13,6 +13,7 @@ import json
 import os
 import random
 import re
+import sqlite3
 import sys
 import time
 import urllib.error
@@ -25,6 +26,10 @@ from datetime import datetime, timezone
 DEFAULT_SOURCE = "/Users/mrsalwer/Downloads/catlog-table.jsonl.gz"
 DEFAULT_OUTPUT = "data/sample/openkinetics_demo_100.json"
 DEFAULT_CACHE = "/private/tmp/openkinetics_catlog_demo_cache"
+DEFAULT_SEQMAP_DB = os.environ.get(
+    "OPENKINETICS_SEQMAP_DB",
+    os.path.join(os.environ.get("OPENKINETICS_SEQUENCE_INFO_ROOT", "/sequence_info"), "seqmap.sqlite3"),
+)
 
 UNIPROT_FASTA_URL = "https://rest.uniprot.org/uniprotkb/{accession}.fasta"
 PUBCHEM_PROPS_URL = (
@@ -105,8 +110,22 @@ def stable_id(prefix, *parts):
     return "%s_%s" % (prefix, sha256_text(payload)[:16])
 
 
-def predictor_cache_sequence_id(sequence):
+def fallback_sequence_id(sequence):
     return sha256_text(sequence)[:12]
+
+
+def predictor_sequence_id(sequence, seqmap_db=None):
+    sha = sha256_text(sequence)
+    if seqmap_db and os.path.exists(seqmap_db):
+        try:
+            uri = "file:%s?mode=ro" % os.path.abspath(seqmap_db)
+            with sqlite3.connect(uri, uri=True) as connection:
+                row = connection.execute("SELECT id FROM sequences WHERE sha256=?", (sha,)).fetchone()
+                if row and row[0]:
+                    return row[0]
+        except sqlite3.Error:
+            pass
+    return fallback_sequence_id(sequence)
 
 
 def file_sha256(path):
@@ -384,10 +403,9 @@ def assign_split(identifier, ratios=(0.8, 0.1, 0.1)):
     return "test"
 
 
-def build_datapoint(record, sequence_info, compound_info):
+def build_datapoint(record, sequence_info, compound_info, seqmap_db=None):
     sequence = sequence_info["sequence"]
-    sequence_id = stable_id("seq", sequence)
-    cache_sequence_id = predictor_cache_sequence_id(sequence)
+    sequence_id = predictor_sequence_id(sequence, seqmap_db)
     substrate_id = compound_info["substrate_id"]
     enzyme_substrate_id = stable_id(
         "pair",
@@ -414,7 +432,6 @@ def build_datapoint(record, sequence_info, compound_info):
         },
         "sequence": {
             "sequence_id": sequence_id,
-            "cache_sequence_id": cache_sequence_id,
             "sequence": sequence,
             "length": sequence_info["length"],
             "source": sequence_info["source"],
@@ -444,7 +461,6 @@ def build_datapoint(record, sequence_info, compound_info):
         "enzyme_substrate_pair": {
             "pair_id": enzyme_substrate_id,
             "sequence_id": sequence_id,
-            "cache_sequence_id": cache_sequence_id,
             "substrate_id": substrate_id,
         },
         "measurements": {
@@ -486,11 +502,6 @@ def build_datapoint(record, sequence_info, compound_info):
             "substrate_exclusive_sha256": assign_split(substrate_id),
             "pair_exclusive_sha256": assign_split(enzyme_substrate_id),
         },
-        "demo_artifact_keys": {
-            "embedding_key": cache_sequence_id,
-            "binding_site_prediction_key": cache_sequence_id,
-            "note": "Keys use the predictor seqmap-compatible cache ID: sha256(sequence)[:12].",
-        },
     }
 
 
@@ -509,14 +520,14 @@ def build_schema():
             "provenance",
             "evidence",
             "demo_splits",
-            "demo_artifact_keys",
         ],
         "notes": [
             "Protein sequences are fetched from UniProt by primary_uniprot_id.",
             "Substrate structures are fetched from PubChem by substrate_name.",
             "PMID/DOI lists are not present in catlog-table.jsonl.gz; only counts are included.",
             "Verification notes and raw source envelopes are not present in catlog-table.jsonl.gz.",
-            "Embeddings and pseq2sites scores are represented by join keys, not computed vectors/scores.",
+            "Embeddings and pseq2sites scores are keyed by sequence_id, not embedded in this sample.",
+            "sequence_id is the predictor seqmap ID when available and otherwise sha256(sequence)[:12].",
         ],
     }
 
@@ -658,7 +669,7 @@ def build_sample(args):
                 failed_pubchem[substrate_name] = str(exc)
                 continue
             api_attempts += 1
-            datapoint = build_datapoint(record, sequence_info, compound_info)
+            datapoint = build_datapoint(record, sequence_info, compound_info, args.seqmap_db)
             if not should_accept(datapoint, counts, constraints):
                 continue
             built_by_record_key[record_key] = datapoint
@@ -688,21 +699,113 @@ def build_sample(args):
     return artifact
 
 
+def refresh_manifest_counts(artifact):
+    datapoints = artifact["datapoints"]
+    unique_sequences = sorted({row["sequence"]["sequence_id"] for row in datapoints})
+    unique_substrates = sorted({row["substrate"]["substrate_id"] for row in datapoints})
+    unique_ecs = sorted({row["enzyme"]["ec_number"] for row in datapoints if row["enzyme"].get("ec_number")})
+    source_dbs = defaultdict(int)
+    statuses = defaultdict(int)
+    for row in datapoints:
+        source_dbs[row["provenance"].get("source_db") or "unknown"] += 1
+        statuses[row["evidence"].get("verification_status") or "unknown"] += 1
+    manifest = artifact["manifest"]
+    manifest["record_count"] = len(datapoints)
+    manifest["counts"] = {
+        "datapoints": len(datapoints),
+        "unique_sequences": len(unique_sequences),
+        "unique_substrates": len(unique_substrates),
+        "unique_ec_numbers": len(unique_ecs),
+        "rows_with_kcat": sum(1 for row in datapoints if row["measurements"]["kcat"]["available"]),
+        "rows_with_km": sum(1 for row in datapoints if row["measurements"]["km"]["available"]),
+        "rows_with_both_kcat_and_km": sum(
+            1
+            for row in datapoints
+            if row["measurements"]["kcat"]["available"] and row["measurements"]["km"]["available"]
+        ),
+    }
+    manifest["source_db_counts"] = dict(sorted(source_dbs.items()))
+    manifest["verification_status_counts"] = dict(sorted(statuses.items()))
+    artifact["schema"] = build_schema()
+
+
+def normalize_datapoint(datapoint, seqmap_db=None):
+    sequence = datapoint["sequence"]
+    substrate = datapoint["substrate"]
+    sequence_id = predictor_sequence_id(sequence["sequence"], seqmap_db)
+    substrate_id = substrate["substrate_id"]
+    pair_id = stable_id(
+        "pair",
+        sequence_id,
+        substrate_id,
+        sequence.get("mutation_signature"),
+    )
+    measurement_id = stable_id("meas", datapoint.get("measurement_key"), sequence_id, substrate_id)
+
+    datapoint["measurement_id"] = measurement_id
+    sequence["sequence_id"] = sequence_id
+    sequence.pop("cache_sequence_id", None)
+    sequence.pop("predictor_cache_sequence_id", None)
+
+    pair = datapoint.setdefault("enzyme_substrate_pair", {})
+    pair["pair_id"] = pair_id
+    pair["sequence_id"] = sequence_id
+    pair["substrate_id"] = substrate_id
+    pair.pop("cache_sequence_id", None)
+
+    splits = datapoint.setdefault("demo_splits", {})
+    splits["random_seed_20260810"] = assign_split(datapoint.get("record_key", ""))
+    splits["sequence_exclusive_sha256"] = assign_split(sequence_id)
+    splits["substrate_exclusive_sha256"] = assign_split(substrate_id)
+    splits["pair_exclusive_sha256"] = assign_split(pair_id)
+
+    datapoint.pop("demo_artifact_keys", None)
+
+
+def normalize_existing_sample(args):
+    source_path = args.normalize_existing
+    output_path = args.output or source_path
+    with open(source_path, "r", encoding="utf-8") as handle:
+        artifact = json.load(handle)
+    for datapoint in artifact["datapoints"]:
+        normalize_datapoint(datapoint, args.seqmap_db)
+    artifact["datapoints"].sort(key=lambda row: row["record_key"])
+    refresh_manifest_counts(artifact)
+
+    ensure_dir(output_path)
+    temp_path = output_path + ".tmp"
+    with open(temp_path, "w", encoding="utf-8") as handle:
+        json.dump(artifact, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+    os.replace(temp_path, output_path)
+    return artifact, output_path
+
+
 def parse_args(argv):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", default=DEFAULT_SOURCE)
-    parser.add_argument("--output", default=DEFAULT_OUTPUT)
+    parser.add_argument("--output")
     parser.add_argument("--cache-dir", default=DEFAULT_CACHE)
     parser.add_argument("--count", type=int, default=100)
+    parser.add_argument("--seqmap-db", default=DEFAULT_SEQMAP_DB)
+    parser.add_argument(
+        "--normalize-existing",
+        help="Normalize an existing demo sample JSON instead of rebuilding from the CatLog export.",
+    )
     parser.add_argument("--verbose", action="store_true")
     return parser.parse_args(argv)
 
 
 def main(argv=None):
     args = parse_args(argv or sys.argv[1:])
-    artifact = build_sample(args)
+    if args.normalize_existing:
+        artifact, output_path = normalize_existing_sample(args)
+    else:
+        args.output = args.output or DEFAULT_OUTPUT
+        artifact = build_sample(args)
+        output_path = args.output
     manifest = artifact["manifest"]
-    print("Wrote %s" % args.output)
+    print("Wrote %s" % output_path)
     print("Records: %s" % manifest["record_count"])
     print("Unique sequences: %s" % manifest["counts"]["unique_sequences"])
     print("Unique substrates: %s" % manifest["counts"]["unique_substrates"])

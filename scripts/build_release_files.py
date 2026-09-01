@@ -15,10 +15,6 @@ DEFAULT_SAMPLE = "data/sample/openkinetics_demo_100.json"
 DEFAULT_RELEASES_DIR = os.environ.get("OPENKINETICS_RELEASES_ROOT", "releases")
 
 
-def sequence_cache_id(sequence):
-    return hashlib.sha256(sequence.encode("utf-8")).hexdigest()[:12]
-
-
 def ensure_dir(path):
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -86,7 +82,6 @@ def flat_measurement(datapoint):
         "organism": enzyme.get("organism"),
         "primary_uniprot_id": enzyme.get("primary_uniprot_id"),
         "sequence_id": sequence.get("sequence_id"),
-        "cache_sequence_id": sequence.get("cache_sequence_id") or sequence_cache_id(sequence.get("sequence")),
         "sequence_length": sequence.get("length"),
         "sequence_variant_status": sequence.get("sequence_variant_status"),
         "mutation_signature": sequence.get("mutation_signature"),
@@ -125,7 +120,6 @@ def sequence_rows(datapoints):
         enzyme = row["enzyme"]
         seen[sequence["sequence_id"]] = {
             "sequence_id": sequence["sequence_id"],
-            "cache_sequence_id": sequence.get("cache_sequence_id") or sequence_cache_id(sequence.get("sequence")),
             "primary_uniprot_id": enzyme.get("primary_uniprot_id"),
             "length": sequence.get("length"),
             "sequence": sequence.get("sequence"),
@@ -171,8 +165,6 @@ def split_rows(datapoints, family, source_key):
                 "measurement_key": row.get("measurement_key"),
                 "measurement_id": row.get("measurement_id"),
                 "sequence_id": row["sequence"]["sequence_id"],
-                "cache_sequence_id": row["sequence"].get("cache_sequence_id")
-                or sequence_cache_id(row["sequence"].get("sequence")),
                 "substrate_id": row["substrate"]["substrate_id"],
                 "pair_id": row["enzyme_substrate_pair"]["pair_id"],
                 "split_family": family,
@@ -233,7 +225,7 @@ def main():
     enriched_manifest["schema"] = sample.get("schema", {})
     enriched_manifest["download_note"] = (
         "Large embeddings and Pseq2Sites artifacts are stored as mounted server files keyed by "
-        "cache_sequence_id, matching the predictor seqmap IDs."
+        "sequence_id, matching the predictor seqmap IDs."
     )
     write_json(release_dir / "manifest.json", enriched_manifest)
 
@@ -256,7 +248,6 @@ def main():
         "measurement_key",
         "measurement_id",
         "sequence_id",
-        "cache_sequence_id",
         "substrate_id",
         "pair_id",
         "split_family",
@@ -283,8 +274,8 @@ def main():
             ),
         },
         "pseq2sites": os.environ.get("OPENKINETICS_PSEQ2SITES_ROOT", "pseq2sites_scores"),
-        "join_key": "cache_sequence_id",
-        "filename_pattern": "{cache_sequence_id}.npy",
+        "join_key": "sequence_id",
+        "filename_pattern": "{sequence_id}.npy",
     }
     write_json(release_dir / "expected_generated_artifacts.json", expected)
 

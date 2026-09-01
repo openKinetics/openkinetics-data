@@ -23,7 +23,6 @@ class Release(models.Model):
 
 class Sequence(models.Model):
     sequence_id = models.CharField(max_length=80, unique=True)
-    cache_sequence_id = models.CharField(max_length=80, blank=True, db_index=True)
     primary_uniprot_id = models.CharField(max_length=40, db_index=True)
     sequence = models.TextField()
     length = models.PositiveIntegerField()

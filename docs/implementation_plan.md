@@ -89,7 +89,7 @@ All are keyed by `sequence_id`.
 1. Receive CatLog export.
 2. Normalize rows into the OpenKinetics schema.
 3. Join UniProt sequences and PubChem substrate structures.
-4. Generate sequence/substrate/pair IDs.
+4. Generate `sequence_id` from the predictor seqmap ID, plus substrate and pair IDs.
 5. Generate train/val/test split assignments.
 6. Generate `esm2`, `esmc`, `prot_t5`, and `pseq2sites` artifacts keyed by
    `sequence_id`.

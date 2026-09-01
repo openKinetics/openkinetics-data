@@ -187,13 +187,10 @@ def sequence_artifact_download(_request, sequence_id, artifact_key):
     definition = SEQUENCE_ARTIFACT_DEFINITIONS.get(artifact_key)
     if not definition:
         raise Http404("Unknown sequence artifact.")
-    cache_sequence_id = sequence.cache_sequence_id
-    if not cache_sequence_id:
-        raise Http404("No predictor cache sequence ID is available for this sequence.")
-    path = artifact_path(cache_sequence_id, artifact_key)
+    path = artifact_path(sequence.sequence_id, artifact_key)
     if not path or not path.exists() or not path.is_file():
         raise Http404("Sequence artifact is not available.")
-    filename = "%s_%s" % (cache_sequence_id, definition["filename_suffix"])
+    filename = "%s_%s" % (sequence.sequence_id, definition["filename_suffix"])
     return FileResponse(
         open(path, "rb"),
         as_attachment=True,

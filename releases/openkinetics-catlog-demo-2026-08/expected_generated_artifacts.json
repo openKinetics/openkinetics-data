@@ -4,8 +4,8 @@
     "esmc": "esmc_layer_32/residue_vecs",
     "prot_t5": "prot_t5_layer_19/residue_vecs"
   },
-  "filename_pattern": "{cache_sequence_id}.npy",
-  "join_key": "cache_sequence_id",
+  "filename_pattern": "{sequence_id}.npy",
+  "join_key": "sequence_id",
   "mounted_sequence_info_root": "/sequence_info",
   "pseq2sites": "pseq2sites_scores"
 }

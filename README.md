@@ -91,14 +91,13 @@ The frontend container serves the React app, proxies `/api/`, `/admin/`, and
 `/sequence-artifacts/` to Django, and serves `/releases/` from the mounted
 release directory.
 
-Sequence artifact files are keyed by `cache_sequence_id`, matching the predictor
-cache convention from `seqmap.sqlite3` where possible and otherwise using
-`sha256(sequence)[:12]`. Per-record artifact downloads point to mounted `.npy`
-files such as:
+Sequence artifact files are keyed by `sequence_id`, matching the predictor
+`seqmap.sqlite3` ID where possible and otherwise using `sha256(sequence)[:12]`.
+Per-record artifact downloads point to mounted `.npy` files such as:
 
 ```text
-/sequence_info/esm2_layer_26/residue_vecs/{cache_sequence_id}.npy
-/sequence_info/esmc_layer_32/residue_vecs/{cache_sequence_id}.npy
-/sequence_info/prot_t5_layer_19/residue_vecs/{cache_sequence_id}.npy
-/sequence_info/pseq2sites_scores/{cache_sequence_id}.npy
+/sequence_info/esm2_layer_26/residue_vecs/{sequence_id}.npy
+/sequence_info/esmc_layer_32/residue_vecs/{sequence_id}.npy
+/sequence_info/prot_t5_layer_19/residue_vecs/{sequence_id}.npy
+/sequence_info/pseq2sites_scores/{sequence_id}.npy
 ```

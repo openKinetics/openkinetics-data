@@ -27,12 +27,11 @@ class MeasurementAdmin(admin.ModelAdmin):
 class SequenceAdmin(admin.ModelAdmin):
     list_display = (
         "sequence_id",
-        "cache_sequence_id",
         "primary_uniprot_id",
         "length",
         "sequence_variant_status",
     )
-    search_fields = ("sequence_id", "cache_sequence_id", "primary_uniprot_id")
+    search_fields = ("sequence_id", "primary_uniprot_id")
 
 
 @admin.register(Substrate)

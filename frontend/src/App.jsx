@@ -407,7 +407,6 @@ function RecordPage() {
         <Panel title="Protein sequence">
           <dl className="key-values">
             <dt>Sequence ID</dt><dd>{row.sequence.sequence_id}</dd>
-            <dt>Cache ID</dt><dd>{row.sequence.cache_sequence_id}</dd>
             <dt>UniProt</dt>
             <dd>
               <a href={row.sequence.source_url}>{row.enzyme.primary_uniprot_id}</a>
@@ -427,8 +426,8 @@ function RecordPage() {
                   <p>{artifact.description}</p>
                   <small>
                     {artifact.available
-                      ? `${formatBytes(artifact.size_bytes)} · ${artifact.relative_cache_path}`
-                      : `Awaiting ${artifact.cache_sequence_id}.npy`}
+                      ? `${formatBytes(artifact.size_bytes)} · ${artifact.relative_path}`
+                      : `Awaiting ${artifact.sequence_id}.npy`}
                   </small>
                 </div>
                 {artifact.available ? (
