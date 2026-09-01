@@ -18,6 +18,7 @@ GPU worker mode is for GPU_EMBED_STEP_CMD_OPENKINETICS_DEMO_SEQUENCE_ARTIFACTS:
 from __future__ import annotations
 
 import argparse
+import ast
 import csv
 import gzip
 import hashlib
@@ -27,6 +28,7 @@ import os
 import pickle
 import shlex
 import sqlite3
+import struct
 import subprocess
 import sys
 import tempfile
@@ -48,6 +50,16 @@ DEFAULT_RELEASES_DIR = Path(
 )
 DEFAULT_WEBKINPRED_ROOT = Path(os.environ.get("GPU_EMBED_REPO_ROOT", "/home/saleh/webKinPred"))
 DEFAULT_GPU_STEP_KEY = "openkinetics_demo_sequence_artifacts"
+DEFAULT_GPU_WORKER_SCRIPT = Path(
+    os.environ.get(
+        "OPENKINETICS_GPU_WORKER_SCRIPT",
+        str(
+            Path(os.environ.get("OPENKINETICS_GPU_REPO_ROOT", str(OPENKINETICS_REPO_ROOT)))
+            / "scripts"
+            / "generate_demo_sequence_artifacts.py"
+        ),
+    )
+)
 
 MODEL_ORDER = ("prot_t5", "esm2", "esmc", "pseq2sites")
 ARTIFACT_ROOTS = {
@@ -604,23 +616,49 @@ get_sites(seq_map, bs_df, batch_size=batch_size, save_path=str(bs_path), return_
         run_command(cmd, env=env, cwd=webkinpred_root, dry_run=dry_run)
 
 
-def score_text_to_array(score_text: str):
-    import numpy as np
-
-    values = [float(part) for part in score_text.split(",") if part.strip()]
-    return np.asarray(values, dtype=np.float32)
+def score_text_to_values(score_text: str) -> list[float]:
+    return [float(part) for part in score_text.split(",") if part.strip()]
 
 
-def save_npy_atomic(path: Path, array) -> None:
-    import numpy as np
+def save_float32_vector_npy_atomic(path: Path, values: list[float]) -> None:
+    header = {
+        "descr": "<f4",
+        "fortran_order": False,
+        "shape": (len(values),),
+    }
+    header_text = repr(header)
+    header_len = len(header_text) + 1
+    padding = (16 - ((10 + header_len) % 16)) % 16
+    header_bytes = (header_text + (" " * padding) + "\n").encode("latin1")
+    data = struct.pack("<%sf" % len(values), *values) if values else b""
 
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_name(f".{path.name}.{os.getpid()}.tmp.npy")
     try:
-        np.save(tmp_path, array)
+        with tmp_path.open("wb") as handle:
+            handle.write(b"\x93NUMPY")
+            handle.write(bytes([1, 0]))
+            handle.write(struct.pack("<H", len(header_bytes)))
+            handle.write(header_bytes)
+            handle.write(data)
         os.replace(tmp_path, path)
     finally:
         tmp_path.unlink(missing_ok=True)
+
+
+def read_npy_shape(path: Path) -> tuple[int, ...]:
+    with path.open("rb") as handle:
+        if handle.read(6) != b"\x93NUMPY":
+            raise ValueError("not a .npy file")
+        major, _minor = handle.read(2)
+        if major == 1:
+            header_length = struct.unpack("<H", handle.read(2))[0]
+        elif major in (2, 3):
+            header_length = struct.unpack("<I", handle.read(4))[0]
+        else:
+            raise ValueError(f"unsupported .npy version: {major}")
+        header = ast.literal_eval(handle.read(header_length).decode("latin1").strip())
+    return tuple(int(value) for value in header.get("shape") or ())
 
 
 def convert_pseq2sites_scores(
@@ -648,15 +686,15 @@ def convert_pseq2sites_scores(
         if out_path.exists() and not force:
             skipped += 1
             continue
-        array = score_text_to_array(rows[row.sequence_id])
-        if array.shape[0] != row.length:
+        values = score_text_to_values(rows[row.sequence_id])
+        if len(values) != row.length:
             raise SystemExit(
                 f"Pseq2Sites score length mismatch for {row.sequence_id}: "
-                f"scores={array.shape[0]} sequence={row.length}"
+                f"scores={len(values)} sequence={row.length}"
             )
         print(f"pseq2sites: {'would write' if dry_run else 'writing'} {out_path}")
         if not dry_run:
-            save_npy_atomic(out_path, array)
+            save_float32_vector_npy_atomic(out_path, values)
         wrote += 1
     print(f"pseq2sites: score arrays wrote={wrote} skipped={skipped}")
 
@@ -667,8 +705,6 @@ def validate_artifacts(
     sequence_info_root: Path,
     models: list[str],
 ) -> None:
-    import numpy as np
-
     errors: list[str] = []
     for model_key in models:
         for row in sequences:
@@ -677,19 +713,19 @@ def validate_artifacts(
                 errors.append(f"{model_key}:{row.sequence_id} missing {path}")
                 continue
             try:
-                array = np.load(path, mmap_mode="r")
+                shape = read_npy_shape(path)
             except Exception as exc:
                 errors.append(f"{model_key}:{row.sequence_id} unreadable {exc}")
                 continue
             if model_key == "pseq2sites":
-                if tuple(array.shape) != (row.length,):
+                if shape != (row.length,):
                     errors.append(
-                        f"{model_key}:{row.sequence_id} shape={array.shape} expected=({row.length},)"
+                        f"{model_key}:{row.sequence_id} shape={shape} expected=({row.length},)"
                     )
             else:
-                if len(array.shape) != 2 or int(array.shape[0]) != row.length:
+                if len(shape) != 2 or int(shape[0]) != row.length:
                     errors.append(
-                        f"{model_key}:{row.sequence_id} shape={array.shape} expected first dim {row.length}"
+                        f"{model_key}:{row.sequence_id} shape={shape} expected first dim {row.length}"
                     )
     if errors:
         print("Artifact validation failed:")
@@ -894,11 +930,10 @@ def check_gpu_health(base_url: str, *, token: str, timeout: float, dry_run: bool
     )
 
 
-def gpu_step_command_export(step_key: str) -> str:
+def gpu_step_command_export(step_key: str, worker_script: Path) -> str:
     env_key = f"GPU_EMBED_STEP_CMD_{step_key.upper()}"
-    script_path = OPENKINETICS_REPO_ROOT / "scripts" / "generate_demo_sequence_artifacts.py"
     command = (
-        f"/usr/bin/python3 {script_path} --worker-mode "
+        f"/usr/bin/python3 {worker_script} --worker-mode "
         "--seq-id-to-seq-file {seq_id_to_seq_file}"
     )
     return f'export {env_key}="{command}"'
@@ -1147,6 +1182,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gpu-service-url", default=os.environ.get("GPU_EMBED_SERVICE_URL", ""))
     parser.add_argument("--gpu-service-token", default=os.environ.get("GPU_EMBED_SERVICE_TOKEN", ""))
     parser.add_argument("--gpu-step-key", default=os.environ.get("OPENKINETICS_GPU_STEP_KEY", DEFAULT_GPU_STEP_KEY))
+    parser.add_argument("--gpu-worker-script", default=str(DEFAULT_GPU_WORKER_SCRIPT))
     parser.add_argument("--print-gpu-step-command", action="store_true")
     parser.add_argument("--gpu-job-timeout", type=positive_int, default=21600)
     parser.add_argument("--http-timeout", type=float, default=5.0)
@@ -1164,7 +1200,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     if args.print_gpu_step_command:
-        print(gpu_step_command_export(args.gpu_step_key))
+        print(gpu_step_command_export(args.gpu_step_key, repo_path(args.gpu_worker_script)))
         return 0
     if args.worker_mode:
         return run_worker_mode(args)
