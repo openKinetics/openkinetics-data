@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, NavLink, Route, Routes, useParams } from "react-router-dom";
+import { Link, Navigate, NavLink, Route, Routes, useParams } from "react-router-dom";
 import {
   Database,
   Download,
@@ -90,13 +90,13 @@ function Layout() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <Link className="brand" to="/">
+        <Link className="brand" to="/downloads">
           <Database size={22} aria-hidden="true" />
           <span>OpenKinetics Data</span>
         </Link>
         <nav className="navlinks" aria-label="Primary navigation">
-          <NavLink to="/">Search</NavLink>
           <NavLink to="/downloads">Downloads</NavLink>
+          <NavLink to="/search">Search</NavLink>
           <NavLink to="/releases">Releases</NavLink>
           <NavLink to="/citation">Citation</NavLink>
           <NavLink to="/api-docs">API</NavLink>
@@ -105,7 +105,8 @@ function Layout() {
       <AttributionBanner />
       <main>
         <Routes>
-          <Route path="/" element={<SearchPage />} />
+          <Route path="/" element={<Navigate to="/downloads" replace />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/records/:recordKey" element={<RecordPage />} />
           <Route path="/downloads" element={<DownloadsPage />} />
           <Route path="/releases" element={<ReleasesPage />} />
@@ -384,7 +385,7 @@ function RecordPage() {
     <div className="page detail-page">
       <div className="detail-header">
         <div>
-          <Link className="back-link" to="/">Back to search</Link>
+          <Link className="back-link" to="/search">Back to search</Link>
           <h1>{row.enzyme.name}</h1>
           <p>{row.substrate.name} · {row.enzyme.organism} · EC {row.enzyme.ec_number}</p>
         </div>
