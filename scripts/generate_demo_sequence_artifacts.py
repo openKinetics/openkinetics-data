@@ -983,7 +983,10 @@ def run_worker_mode(args: argparse.Namespace) -> int:
     }
 
     print(f"worker_mode=1 unique_sequences={len(sequences)} media_path={media_path}")
+    print(f"sequence_info_root={sequence_info_root}")
     print(f"models={','.join(models)}")
+    for model_key in models:
+        print(f"{model_key}_artifact_root={sequence_info_root / ARTIFACT_ROOTS[model_key]}")
     if args.validate_only:
         validate_artifacts(sequences=sequences, sequence_info_root=sequence_info_root, models=models)
         return 0
@@ -1052,7 +1055,7 @@ def run_production_mode(args: argparse.Namespace) -> int:
         seqmap_db=seqmap_db,
         webkinpred_root=webkinpred_root,
         allow_id_mismatch=args.allow_id_mismatch,
-        dry_run=args.dry_run,
+        dry_run=args.dry_run or args.validate_only,
     )
     if not sequences:
         raise SystemExit("No protein sequences found.")
