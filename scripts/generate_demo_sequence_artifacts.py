@@ -694,15 +694,70 @@ def stream_recv_frame(sock: socket.socket) -> tuple[dict[str, Any], bytes]:
     return header, payload
 
 
-def save_array_atomic(path: Path, arr: Any) -> None:
-    import numpy as np
+def npy_dtype_itemsize(dtype: str) -> int:
+    normalized = str(dtype or "").strip().lower()
+    if normalized in {"float32", "<f4", "|f4", "f4"}:
+        return 4
+    raise RuntimeError(f"Unsupported streamed dtype: {dtype}")
 
+
+def npy_dtype_descr(dtype: str) -> str:
+    normalized = str(dtype or "").strip().lower()
+    if normalized in {"float32", "<f4", "|f4", "f4"}:
+        return "<f4"
+    raise RuntimeError(f"Unsupported streamed dtype: {dtype}")
+
+
+def stream_shape(header: dict[str, Any]) -> tuple[int, ...]:
+    raw_shape = header.get("shape")
+    if not isinstance(raw_shape, (list, tuple)) or not raw_shape:
+        raise RuntimeError(f"Invalid stream array shape in header: {header}")
+    shape = tuple(int(value) for value in raw_shape)
+    if any(value < 0 for value in shape):
+        raise RuntimeError(f"Invalid negative stream array shape in header: {header}")
+    return shape
+
+
+def validate_stream_payload(header: dict[str, Any], payload: bytes) -> tuple[tuple[int, ...], str]:
+    shape = stream_shape(header)
+    descr = npy_dtype_descr(str(header.get("dtype") or "float32"))
+    expected_nbytes = npy_dtype_itemsize(descr)
+    for dim in shape:
+        expected_nbytes *= dim
+    if expected_nbytes != len(payload):
+        raise RuntimeError(
+            f"Stream payload size mismatch: payload={len(payload)} expected={expected_nbytes}"
+        )
+    return shape, descr
+
+
+def save_npy_payload_atomic(
+    path: Path,
+    *,
+    shape: tuple[int, ...],
+    descr: str,
+    payload: bytes,
+) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.stem}.", suffix=".npy", dir=str(path.parent))
     os.close(fd)
     tmp_path = Path(tmp_name)
     try:
-        np.save(tmp_path, np.ascontiguousarray(arr))
+        header = {
+            "descr": npy_dtype_descr(descr),
+            "fortran_order": False,
+            "shape": tuple(int(value) for value in shape),
+        }
+        header_text = repr(header)
+        header_len = len(header_text) + 1
+        padding = (16 - ((10 + header_len) % 16)) % 16
+        header_bytes = (header_text + (" " * padding) + "\n").encode("latin1")
+        with tmp_path.open("wb") as handle:
+            handle.write(b"\x93NUMPY")
+            handle.write(bytes([1, 0]))
+            handle.write(struct.pack("<H", len(header_bytes)))
+            handle.write(header_bytes)
+            handle.write(payload)
         os.replace(tmp_path, path)
     finally:
         tmp_path.unlink(missing_ok=True)
@@ -717,11 +772,22 @@ class AsyncNpyWriter:
         self._futures: list[concurrent.futures.Future] = []
         self._lock = threading.Lock()
 
-    def submit(self, path: Path, arr: Any) -> None:
-        import numpy as np
-
-        arr_copy = np.ascontiguousarray(arr).copy()
-        future = self._pool.submit(save_array_atomic, path, arr_copy)
+    def submit(
+        self,
+        path: Path,
+        *,
+        shape: tuple[int, ...],
+        descr: str,
+        payload: bytes,
+    ) -> None:
+        payload_copy = bytes(payload)
+        future = self._pool.submit(
+            save_npy_payload_atomic,
+            path,
+            shape=shape,
+            descr=descr,
+            payload=payload_copy,
+        )
         with self._lock:
             self._futures.append(future)
 
@@ -883,32 +949,13 @@ class StreamEventServer:
         self.socket_path.unlink(missing_ok=True)
 
 
-def decode_stream_array(header: dict[str, Any], payload: bytes):
-    import numpy as np
-
-    dtype = np.dtype(str(header.get("dtype") or "float32"))
-    raw_shape = header.get("shape")
-    if not isinstance(raw_shape, list | tuple) or not raw_shape:
-        raise RuntimeError(f"Invalid stream array shape in header: {header}")
-    shape = tuple(int(value) for value in raw_shape)
-    expected_nbytes = int(dtype.itemsize)
-    for dim in shape:
-        expected_nbytes *= dim
-    if expected_nbytes != len(payload):
-        raise RuntimeError(
-            f"Stream payload size mismatch: payload={len(payload)} expected={expected_nbytes}"
-        )
-    return np.frombuffer(payload, dtype=dtype).reshape(shape).astype(np.float32, copy=False)
-
-
-def validate_stream_array_shape(
+def validate_stream_shape(
     *,
     model_key: str,
     row: DemoSequence,
-    arr: Any,
+    shape: tuple[int, ...],
 ) -> None:
     expected_length = sequence_artifact_input_length(row.sequence)
-    shape = tuple(int(value) for value in getattr(arr, "shape", ()))
     if model_key == "pseq2sites":
         if shape != (expected_length,):
             raise RuntimeError(
@@ -970,10 +1017,29 @@ def start_stream_worker(
     return subprocess.Popen(cmd, env=env, cwd=str(cwd))
 
 
-def load_npy_array(path: Path):
-    import numpy as np
-
-    return np.load(path).astype(np.float32, copy=False)
+def read_npy_payload(path: Path) -> tuple[tuple[int, ...], str, bytes]:
+    with path.open("rb") as handle:
+        if handle.read(6) != b"\x93NUMPY":
+            raise ValueError("not a .npy file")
+        major, _minor = handle.read(2)
+        if major == 1:
+            header_length = struct.unpack("<H", handle.read(2))[0]
+        elif major in (2, 3):
+            header_length = struct.unpack("<I", handle.read(4))[0]
+        else:
+            raise ValueError(f"unsupported .npy version: {major}")
+        header = ast.literal_eval(handle.read(header_length).decode("latin1").strip())
+        if bool(header.get("fortran_order")):
+            raise ValueError("Fortran-ordered .npy arrays are not supported")
+        shape = tuple(int(value) for value in header.get("shape") or ())
+        descr = npy_dtype_descr(str(header.get("descr") or ""))
+        payload = handle.read()
+    expected_nbytes = npy_dtype_itemsize(descr)
+    for dim in shape:
+        expected_nbytes *= dim
+    if len(payload) != expected_nbytes:
+        raise ValueError(f".npy payload size mismatch: payload={len(payload)} expected={expected_nbytes}")
+    return shape, descr, payload
 
 
 def pseq_retry_batch_plan(env: dict[str, str], start_batch_size: int) -> list[int]:
@@ -1380,7 +1446,10 @@ def run_parallel_stream_worker(
         daemon=True,
     )
 
-    def queue_t5_for_pseq(seq_id: str, arr: Any | None = None) -> bool:
+    def queue_t5_for_pseq(
+        seq_id: str,
+        stream_payload: tuple[tuple[int, ...], str, bytes] | None = None,
+    ) -> bool:
         if seq_id not in pseq_targets or pseq_done(seq_id):
             return False
         if seq_id in queued_to_pseq or seq_id in sent_to_pseq:
@@ -1388,20 +1457,21 @@ def run_parallel_stream_worker(
         if get_pseq_client_id() is None:
             return False
         row = seq_by_id[seq_id]
-        if arr is None:
+        if stream_payload is None:
             path = artifact_path(sequence_info_root, "prot_t5", seq_id)
             if not path.exists() or not artifact_shape_matches("prot_t5", row.sequence, path):
                 return False
-            arr = load_npy_array(path)
-        validate_stream_array_shape(model_key="prot_t5", row=row, arr=arr)
-        payload = arr.astype("float32", copy=False).tobytes(order="C")
+            shape, descr, payload = read_npy_payload(path)
+        else:
+            shape, descr, payload = stream_payload
+        validate_stream_shape(model_key="prot_t5", row=row, shape=shape)
         header = {
             "type": "PSEQ_RESIDUE",
             "job_id": job_id,
             "seq_id": seq_id,
             "sequence": seq_id_to_input[seq_id],
-            "dtype": "float32",
-            "shape": [int(value) for value in arr.shape],
+            "dtype": descr,
+            "shape": [int(value) for value in shape],
         }
         try:
             pseq_send_queue.put_nowait((seq_id, header, payload))
@@ -1698,18 +1768,18 @@ def run_parallel_stream_worker(
                         raise RuntimeError(f"Stream returned unknown seq_id={seq_id}")
                     if payload is None:
                         raise RuntimeError(f"{model_key}:{seq_id} stream event missing payload")
-                    arr = decode_stream_array(header, payload)
+                    shape, descr = validate_stream_payload(header, payload)
                     row = seq_by_id[seq_id]
-                    validate_stream_array_shape(model_key=model_key, row=row, arr=arr)
+                    validate_stream_shape(model_key=model_key, row=row, shape=shape)
 
                     if seq_id in save_targets[model_key] and not target_done(model_key, seq_id):
                         out_path = artifact_path(sequence_info_root, model_key, seq_id)
                         submitted_paths.add(out_path)
-                        async_writer.submit(out_path, arr)
+                        async_writer.submit(out_path, shape=shape, descr=descr, payload=payload)
                         completed[model_key].add(seq_id)
                     if model_key == "prot_t5" and seq_id in pseq_targets:
                         t5_ready_for_pseq.add(seq_id)
-                        queue_t5_for_pseq(seq_id, arr)
+                        queue_t5_for_pseq(seq_id, (shape, descr, payload))
                     continue
                 if evt_type == "BS_READY":
                     seq_id = str(header.get("seq_id", "")).strip()
@@ -1717,13 +1787,15 @@ def run_parallel_stream_worker(
                         raise RuntimeError(f"Pseq2Sites returned unknown seq_id={seq_id}")
                     if payload is None:
                         raise RuntimeError(f"pseq2sites:{seq_id} stream event missing payload")
-                    arr = decode_stream_array(header, payload).reshape(-1)
+                    shape, descr = validate_stream_payload(header, payload)
+                    if len(shape) != 1:
+                        raise RuntimeError(f"pseq2sites:{seq_id} streamed shape={shape} expected 1D")
                     row = seq_by_id[seq_id]
-                    validate_stream_array_shape(model_key="pseq2sites", row=row, arr=arr)
+                    validate_stream_shape(model_key="pseq2sites", row=row, shape=shape)
                     if seq_id in pseq_targets and not pseq_done(seq_id):
                         out_path = artifact_path(sequence_info_root, "pseq2sites", seq_id)
                         submitted_paths.add(out_path)
-                        async_writer.submit(out_path, arr)
+                        async_writer.submit(out_path, shape=shape, descr=descr, payload=payload)
                         completed["pseq2sites"].add(seq_id)
                     sent_to_pseq.add(seq_id)
                     queued_to_pseq.discard(seq_id)
