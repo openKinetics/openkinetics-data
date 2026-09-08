@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useParams } from "react-router-dom";
 import {
+  ChevronDown,
+  ChevronRight,
   Database,
   Download,
   ExternalLink,
   FileText,
   FlaskConical,
-  Search,
-  TableProperties
+  Search
 } from "lucide-react";
 import {
   fetchDownloads,
@@ -33,6 +34,17 @@ function formatMetric(metric) {
   return `${metric.value} ${metric.unit || ""}`.trim();
 }
 
+function formatText(value) {
+  if (value === null || value === undefined || value === "") return "n/a";
+  return value;
+}
+
+function formatBool(value) {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  return "n/a";
+}
+
 function formatBytes(bytes) {
   if (!bytes && bytes !== 0) return "pending";
   const units = ["B", "KB", "MB", "GB", "TB"];
@@ -48,6 +60,34 @@ function formatBytes(bytes) {
 function formatScore(value) {
   if (typeof value !== "number") return "n/a";
   return value.toFixed(3);
+}
+
+function enzymeIdentityKey(row) {
+  return [
+    row.enzyme_name || row.enzyme?.name || "",
+    row.ec_number || row.enzyme?.ec_number || "",
+    row.organism || row.enzyme?.organism || "",
+    row.primary_uniprot_id || row.enzyme?.primary_uniprot_id || ""
+  ].join("\u001f");
+}
+
+function enzymeIdentityQuery(row, page = 1) {
+  const primaryUniprotId = row.primary_uniprot_id || row.enzyme?.primary_uniprot_id || "";
+  return {
+    enzyme_identity: "true",
+    enzyme_name: row.enzyme_name || row.enzyme?.name || "",
+    ec_number_exact: row.ec_number || row.enzyme?.ec_number || "",
+    organism_exact: row.organism || row.enzyme?.organism || "",
+    uniprot: primaryUniprotId,
+    page,
+    page_size: 100
+  };
+}
+
+function statLabel(key) {
+  return key
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function residueScoreStyle(score) {
@@ -314,6 +354,31 @@ function StatsBar({ stats, loading }) {
 
 function MeasurementTable({ loading, data }) {
   const rows = data?.results || [];
+  const [expandedRecordKey, setExpandedRecordKey] = useState("");
+  const [enzymePanel, setEnzymePanel] = useState(null);
+
+  function toggleMeasurement(row) {
+    setExpandedRecordKey((current) => (current === row.record_key ? "" : row.record_key));
+    setEnzymePanel(null);
+  }
+
+  function toggleEnzymePanel(event, row) {
+    event.stopPropagation();
+    const key = enzymeIdentityKey(row);
+    setExpandedRecordKey("");
+    setEnzymePanel((current) => (
+      current?.key === key && current?.anchorRecordKey === row.record_key
+        ? null
+        : { key, anchorRecordKey: row.record_key, row }
+    ));
+  }
+
+  function handleRowKeyDown(event, row) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleMeasurement(row);
+  }
+
   if (loading) return <div className="table-state">Loading measurements...</div>;
   if (!rows.length) return <div className="table-state">No matching measurements.</div>;
   return (
@@ -332,27 +397,180 @@ function MeasurementTable({ loading, data }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.record_key}>
-              <td>
-                <Link to={`/records/${row.record_key}`}>{row.enzyme_name}</Link>
-              </td>
-              <td>{row.ec_number}</td>
-              <td>{row.organism}</td>
-              <td>{row.substrate_name}</td>
-              <td>{formatMetric(row.kcat)}</td>
-              <td>{formatMetric(row.km)}</td>
-              <td>{row.primary_uniprot_id}</td>
-              <td>
-                <span className={`status-pill status-${row.verification_status}`}>
-                  {row.verification_status}
-                </span>
-              </td>
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const measurementExpanded = expandedRecordKey === row.record_key;
+            const enzymeExpanded = enzymePanel?.anchorRecordKey === row.record_key;
+            return (
+              <Fragment key={row.record_key}>
+                <tr
+                  className={`measurement-row ${measurementExpanded || enzymeExpanded ? "is-expanded" : ""}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={measurementExpanded || enzymeExpanded}
+                  onClick={() => toggleMeasurement(row)}
+                  onKeyDown={(event) => handleRowKeyDown(event, row)}
+                >
+                  <td>
+                    <div className="enzyme-cell">
+                      {measurementExpanded ? (
+                        <ChevronDown size={16} aria-hidden="true" />
+                      ) : (
+                        <ChevronRight size={16} aria-hidden="true" />
+                      )}
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={(event) => toggleEnzymePanel(event, row)}
+                      >
+                        {row.enzyme_name}
+                      </button>
+                    </div>
+                  </td>
+                  <td>{row.ec_number}</td>
+                  <td>{row.organism}</td>
+                  <td>{row.substrate_name}</td>
+                  <td>{formatMetric(row.kcat)}</td>
+                  <td>{formatMetric(row.km)}</td>
+                  <td>{formatText(row.primary_uniprot_id)}</td>
+                  <td>
+                    <span className={`status-pill status-${row.verification_status}`}>
+                      {row.verification_status}
+                    </span>
+                  </td>
+                </tr>
+                {measurementExpanded ? (
+                  <tr className="expanded-row">
+                    <td colSpan={8}>
+                      <MeasurementInlineDetail recordKey={row.record_key} />
+                    </td>
+                  </tr>
+                ) : null}
+                {enzymeExpanded ? (
+                  <tr className="expanded-row">
+                    <td colSpan={8}>
+                      <EnzymeMeasurementsPanel row={enzymePanel.row} />
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>
+  );
+}
+
+function MeasurementInlineDetail({ recordKey }) {
+  const record = useAsync(() => fetchMeasurement(recordKey), [recordKey]);
+
+  if (record.loading) return <div className="table-state compact-state">Loading measurement...</div>;
+  if (record.error) return <div className="alert-box compact-state">{record.error}</div>;
+  return <MeasurementDetailPanels row={record.data} embedded />;
+}
+
+function EnzymeMeasurementsPanel({ row }) {
+  const [page, setPage] = useState(1);
+  const [expandedRecordKey, setExpandedRecordKey] = useState("");
+  const query = useMemo(() => enzymeIdentityQuery(row, page), [row, page]);
+  const measurements = useAsync(() => fetchMeasurements(query), [query]);
+  const rows = measurements.data?.results || [];
+
+  function toggleRecord(recordKey) {
+    setExpandedRecordKey((current) => (current === recordKey ? "" : recordKey));
+  }
+
+  return (
+    <section className="enzyme-panel">
+      <div className="enzyme-panel-header">
+        <div>
+          <h2>{row.enzyme_name}</h2>
+          <p>
+            {formatText(row.organism)} · EC {formatText(row.ec_number)} · {formatText(row.primary_uniprot_id)}
+          </p>
+        </div>
+        <span className="status-pill">
+          {formatNumber(measurements.data?.pagination?.total || 0)} measurements
+        </span>
+      </div>
+      {measurements.error ? <div className="alert-box compact-state">{measurements.error}</div> : null}
+      {measurements.loading ? <div className="table-state compact-state">Loading enzyme measurements...</div> : null}
+      {!measurements.loading && rows.length ? (
+        <div className="compact-table-wrap">
+          <table className="compact-measurement-table">
+            <thead>
+              <tr>
+                <th>Substrate</th>
+                <th>kcat</th>
+                <th>Km</th>
+                <th>Variant</th>
+                <th>Status</th>
+                <th>Record</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((measurement) => (
+                <CompactMeasurementRow
+                  expanded={expandedRecordKey === measurement.record_key}
+                  key={measurement.record_key}
+                  measurement={measurement}
+                  onToggle={() => toggleRecord(measurement.record_key)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {!measurements.loading && !rows.length && !measurements.error ? (
+        <div className="table-state compact-state">No measurements found.</div>
+      ) : null}
+      <Pagination
+        pagination={measurements.data?.pagination}
+        onPage={(nextPage) => {
+          setExpandedRecordKey("");
+          setPage(nextPage);
+        }}
+      />
+    </section>
+  );
+}
+
+function CompactMeasurementRow({ measurement, expanded, onToggle }) {
+  function handleKeyDown(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    onToggle();
+  }
+
+  return (
+    <Fragment>
+      <tr
+        className={`measurement-row compact-row ${expanded ? "is-expanded" : ""}`}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={onToggle}
+        onKeyDown={handleKeyDown}
+      >
+        <td>{measurement.substrate_name}</td>
+        <td>{formatMetric(measurement.kcat)}</td>
+        <td>{formatMetric(measurement.km)}</td>
+        <td>{measurement.is_mutant ? formatText(measurement.mutation_signature) : "Wild type"}</td>
+        <td>
+          <span className={`status-pill status-${measurement.verification_status}`}>
+            {measurement.verification_status}
+          </span>
+        </td>
+        <td><code>{measurement.record_key}</code></td>
+      </tr>
+      {expanded ? (
+        <tr className="expanded-row">
+          <td colSpan={6}>
+            <MeasurementInlineDetail recordKey={measurement.record_key} />
+          </td>
+        </tr>
+      ) : null}
+    </Fragment>
   );
 }
 
@@ -394,95 +612,130 @@ function RecordPage() {
         </span>
       </div>
 
-      <section className="detail-grid">
-        <Panel title="Measurements">
-          <table className="compact-table">
-            <tbody>
-              <tr><th>kcat</th><td>{formatMetric(row.kcat)}</td></tr>
-              <tr><th>Km</th><td>{formatMetric(row.km)}</td></tr>
-              <tr><th>Ki</th><td>{formatMetric(row.ki)}</td></tr>
-              <tr><th>kcat / Km</th><td>{formatMetric(row.kcat_over_km)}</td></tr>
-              <tr><th>pH</th><td>{formatNumber(row.assay_conditions.ph)}</td></tr>
-              <tr><th>Temperature</th><td>{formatNumber(row.assay_conditions.temperature_c)} C</td></tr>
-            </tbody>
-          </table>
-        </Panel>
-
-        <Panel title="Provenance">
-          <dl className="key-values">
-            <dt>Record key</dt><dd>{row.record_key}</dd>
-            <dt>Source DB</dt><dd>{row.provenance.source_db}</dd>
-            <dt>Evidence tier</dt><dd>{row.evidence.evidence_confidence_tier}</dd>
-            <dt>Paper grounding</dt><dd>{row.evidence.paper_grounding_status}</dd>
-            <dt>Literature counts</dt><dd>{row.provenance.pmid_count} PMID · {row.provenance.doi_count} DOI</dd>
-          </dl>
-          <p className="evidence-note">{row.evidence.compact_evidence_summary}</p>
-        </Panel>
-
-        <ProteinSequencePanel row={row} />
-
-        <Panel title="Sequence artifacts">
-          <div className="artifact-list">
-            {(row.sequence_artifacts || []).map((artifact) => (
-              <article className="artifact-row" key={artifact.artifact_key}>
-                <div>
-                  <h3>{artifact.label}</h3>
-                  <p>{artifact.description}</p>
-                  <small>
-                    {artifact.available
-                      ? `${formatBytes(artifact.size_bytes)} · ${artifact.relative_path}`
-                      : `Awaiting ${artifact.source_filename || `${artifact.sequence_id}.npy`}`}
-                  </small>
-                </div>
-                {artifact.available ? (
-                  <a className="icon-button" href={artifact.url}>
-                    <Download size={16} aria-hidden="true" />
-                    Download ZIP
-                  </a>
-                ) : (
-                  <span className="pending-pill">Awaiting file</span>
-                )}
-                <DownloadFormatDetails artifact={artifact} />
-              </article>
-            ))}
-          </div>
-        </Panel>
-
-        <Panel title="Substrate">
-          <dl className="key-values">
-            <dt>Substrate ID</dt><dd>{row.substrate.substrate_id}</dd>
-            <dt>PubChem</dt>
-            <dd>
-              <a href={row.substrate.source_url}>{row.substrate.pubchem_cid}</a>
-            </dd>
-            <dt>InChIKey</dt><dd>{row.substrate.inchi_key}</dd>
-            <dt>Formula</dt><dd>{row.substrate.molecular_formula}</dd>
-          </dl>
-          <code className="smiles-line">{row.substrate.smiles}</code>
-        </Panel>
-      </section>
+      <MeasurementDetailPanels row={row} />
     </div>
   );
 }
 
+function MeasurementDetailPanels({ row, embedded = false }) {
+  return (
+    <section className={`detail-grid ${embedded ? "inline-detail-grid" : ""}`}>
+      <Panel title="Measurements">
+        <table className="compact-table">
+          <tbody>
+            <tr><th>kcat</th><td>{formatMetric(row.kcat)}</td></tr>
+            <tr><th>Km</th><td>{formatMetric(row.km)}</td></tr>
+            <tr><th>Ki</th><td>{formatMetric(row.ki)}</td></tr>
+            <tr><th>kcat / Km</th><td>{formatMetric(row.kcat_over_km)}</td></tr>
+            <tr><th>pH</th><td>{formatNumber(row.assay_conditions.ph)}</td></tr>
+            <tr><th>Temperature</th><td>{formatNumber(row.assay_conditions.temperature_c)} C</td></tr>
+          </tbody>
+        </table>
+      </Panel>
+
+      <Panel title="Provenance">
+        <dl className="key-values">
+          <dt>Record key</dt><dd>{row.record_key}</dd>
+          <dt>Source DB</dt><dd>{row.provenance.source_db}</dd>
+          <dt>Evidence tier</dt><dd>{row.evidence.evidence_confidence_tier}</dd>
+          <dt>Paper grounding</dt><dd>{row.evidence.paper_grounding_status}</dd>
+          <dt>Literature counts</dt><dd>{row.provenance.pmid_count} PMID · {row.provenance.doi_count} DOI</dd>
+        </dl>
+        <p className="evidence-note">{row.evidence.compact_evidence_summary}</p>
+      </Panel>
+
+      <ProteinSequencePanel row={row} />
+
+      <Panel title="Sequence artifacts">
+        <div className="artifact-list">
+          {(row.sequence_artifacts || []).map((artifact) => (
+            <article className="artifact-row" key={artifact.artifact_key}>
+              <div>
+                <h3>{artifact.label}</h3>
+                <p>{artifact.description}</p>
+                <small>
+                  {artifact.available
+                    ? `${formatBytes(artifact.size_bytes)} · ${artifact.relative_path}`
+                    : `Awaiting ${artifact.source_filename || `${artifact.sequence_id}.npy`}`}
+                </small>
+              </div>
+              {artifact.available ? (
+                <a className="icon-button" href={artifact.url}>
+                  <Download size={16} aria-hidden="true" />
+                  Download ZIP
+                </a>
+              ) : (
+                <span className="pending-pill">Awaiting file</span>
+              )}
+              <DownloadFormatDetails artifact={artifact} />
+            </article>
+          ))}
+        </div>
+      </Panel>
+
+      <Panel title="Substrate">
+        <dl className="key-values">
+          <dt>Substrate ID</dt><dd>{row.substrate.substrate_id}</dd>
+          <dt>PubChem</dt>
+          <dd>
+            {row.substrate.pubchem_cid ? (
+              <a href={row.substrate.source_url}>{row.substrate.pubchem_cid}</a>
+            ) : (
+              "n/a"
+            )}
+          </dd>
+          <dt>InChIKey</dt><dd>{formatText(row.substrate.inchi_key)}</dd>
+          <dt>Formula</dt><dd>{formatText(row.substrate.molecular_formula)}</dd>
+        </dl>
+        <code className="smiles-line">{row.substrate.smiles}</code>
+      </Panel>
+    </section>
+  );
+}
+
 function ProteinSequencePanel({ row }) {
+  const sequence = row.sequence || {};
   return (
     <Panel title="Protein sequence">
       <dl className="key-values">
-        <dt>Sequence ID</dt><dd>{row.sequence.sequence_id}</dd>
+        <dt>Sequence ID</dt><dd>{sequence.sequence_id}</dd>
         <dt>UniProt</dt>
         <dd>
-          <a href={row.sequence.source_url}>{row.enzyme.primary_uniprot_id}</a>
+          {row.enzyme.primary_uniprot_id && sequence.source_url ? (
+            <a href={sequence.source_url}>{row.enzyme.primary_uniprot_id}</a>
+          ) : (
+            formatText(row.enzyme.primary_uniprot_id)
+          )}
         </dd>
-        <dt>Length</dt><dd>{row.sequence.length} aa</dd>
-        <dt>Variant</dt><dd>{row.sequence.sequence_variant_status}</dd>
+        <dt>Length</dt><dd>{sequence.length} aa</dd>
+        <dt>Mutant</dt><dd>{formatBool(sequence.is_mutant)}</dd>
+        <dt>Wild type</dt><dd>{formatBool(sequence.wild_type)}</dd>
+        <dt>Mutation</dt><dd>{formatText(sequence.mutation_signature)}</dd>
+        <dt>Mutation type</dt><dd>{formatText(sequence.mutation_type)}</dd>
+        <dt>Variant status</dt><dd>{formatText(sequence.sequence_variant_status)}</dd>
+        <dt>Assayed sequence</dt><dd>{formatText(sequence.assayed_sequence_source)}</dd>
       </dl>
+      {sequence.sequence_variant_note ? (
+        <p className="evidence-note">{sequence.sequence_variant_note}</p>
+      ) : null}
+      <SequenceTextDetails title="Wild-type sequence" sequence={sequence.wild_type_sequence} />
+      <SequenceTextDetails title="Variant sequence" sequence={sequence.variant_sequence} />
       <BindingSiteLegend prediction={row.binding_site_prediction} />
       <SequenceHeatmap
         prediction={row.binding_site_prediction}
-        sequence={row.sequence.sequence}
+        sequence={sequence.sequence}
       />
     </Panel>
+  );
+}
+
+function SequenceTextDetails({ title, sequence }) {
+  if (!sequence) return null;
+  return (
+    <details className="sequence-details">
+      <summary>{title}</summary>
+      <pre className="sequence-block">{sequence}</pre>
+    </details>
   );
 }
 
@@ -569,10 +822,152 @@ function DownloadsPage() {
         <p>{downloads.data?.release?.release_id || "Active release"}</p>
       </div>
       {downloads.error ? <div className="alert-box">{downloads.error}</div> : null}
+      <DownloadStatsPanel stats={downloads.data?.stats} loading={downloads.loading} />
       {order.map((family) => (
         groups[family]?.length ? <ArtifactGroup key={family} title={family} artifacts={groups[family]} /> : null
       ))}
     </div>
+  );
+}
+
+function DownloadStatsPanel({ stats, loading }) {
+  const [expanded, setExpanded] = useState(false);
+  const counts = stats?.counts || {};
+  const compactItems = [
+    ["Datapoints", counts.datapoints],
+    ["Sequences", counts.unique_sequences],
+    ["Substrates", counts.unique_substrates],
+    ["EC numbers", counts.unique_ec_numbers],
+    ["Mutants", counts.rows_marked_mutant],
+    ["kcat + Km", counts.rows_with_both_kcat_and_km]
+  ];
+
+  return (
+    <section className="download-stats">
+      <button
+        type="button"
+        className="download-stats-header"
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+      >
+        <span>
+          {expanded ? <ChevronDown size={18} aria-hidden="true" /> : <ChevronRight size={18} aria-hidden="true" />}
+          Release stats
+        </span>
+        <strong>{loading ? "..." : formatNumber(counts.datapoints)} datapoints</strong>
+      </button>
+      <div className="download-stat-grid">
+        {compactItems.map(([label, value]) => (
+          <div className="download-stat" key={label}>
+            <span>{label}</span>
+            <strong>{loading ? "..." : formatNumber(value)}</strong>
+          </div>
+        ))}
+      </div>
+      {expanded ? (
+        <div className="download-stats-expanded">
+          <StatsKeyValueTable title="All counts" values={counts} />
+          <StatsKeyValueTable title="Source DBs" values={stats?.source_db_counts || {}} />
+          <StatsKeyValueTable title="Verification statuses" values={stats?.verification_status_counts || {}} />
+          <StatsKeyValueTable
+            title="Rejected rows"
+            values={stats?.eligibility?.rejected_rows_by_reason || {}}
+          />
+          <DistributionTable
+            title="Enzyme datapoint distribution"
+            rows={stats?.distributions?.enzyme_datapoints || []}
+            countLabel="Enzymes"
+          />
+          <DistributionTable
+            title="Substrate datapoint distribution"
+            rows={stats?.distributions?.substrate_datapoints || []}
+            countLabel="Substrates"
+          />
+          <TopListTable
+            title="Top enzymes"
+            rows={stats?.top_enzymes || []}
+            labelKey="enzyme_name"
+            secondary={(row) => `${formatText(row.organism)} · EC ${formatText(row.ec_number)} · ${formatText(row.primary_uniprot_id)}`}
+          />
+          <TopListTable
+            title="Top substrates"
+            rows={stats?.top_substrates || []}
+            labelKey="substrate_name"
+            secondary={(row) => row.substrate_id}
+          />
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function StatsKeyValueTable({ title, values }) {
+  const entries = Object.entries(values || {});
+  if (!entries.length) return null;
+  return (
+    <section className="stats-subsection">
+      <h2>{title}</h2>
+      <div className="stats-kv-grid">
+        {entries.map(([key, value]) => (
+          <div key={key}>
+            <span>{statLabel(key)}</span>
+            <strong>{formatNumber(value)}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DistributionTable({ title, rows, countLabel }) {
+  if (!rows.length) return null;
+  return (
+    <section className="stats-subsection">
+      <h2>{title}</h2>
+      <table className="stats-table">
+        <thead>
+          <tr>
+            <th>Datapoints</th>
+            <th>{countLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${title}-${row.bucket}`}>
+              <td>{row.bucket}</td>
+              <td>{formatNumber(row.count)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function TopListTable({ title, rows, labelKey, secondary }) {
+  if (!rows.length) return null;
+  return (
+    <section className="stats-subsection">
+      <h2>{title}</h2>
+      <table className="stats-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Context</th>
+            <th>Datapoints</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${title}-${row[labelKey]}-${secondary(row)}`}>
+              <td>{row[labelKey]}</td>
+              <td>{secondary(row)}</td>
+              <td>{formatNumber(row.datapoints)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   );
 }
 

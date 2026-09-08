@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from django.core.paginator import Paginator
 from django.db.models import Count
@@ -48,12 +48,29 @@ def apply_measurement_filters(queryset, params):
     if q:
         queryset = queryset.filter(search_text__icontains=q.lower())
 
+    enzyme_identity = parse_bool(params.get("enzyme_identity"))
+    if enzyme_identity is True:
+        queryset = queryset.filter(
+            enzyme_name=(params.get("enzyme_name") or "").strip(),
+            ec_number=(params.get("ec_number_exact") or params.get("ec_number") or "").strip(),
+            organism=(params.get("organism_exact") or params.get("organism") or "").strip(),
+        )
+        uniprot = (params.get("uniprot") or params.get("primary_uniprot_id") or "").strip()
+        if uniprot:
+            queryset = queryset.filter(primary_uniprot_id__iexact=uniprot)
+        else:
+            queryset = queryset.filter(primary_uniprot_id="")
+
     exact_filters = {
         "ec_class": "ec_class",
         "source_db": "source_db",
         "verification_status": "verification_status",
         "evidence_confidence_tier": "evidence_confidence_tier",
         "paper_grounding_status": "paper_grounding_status",
+        "enzyme_name": "enzyme_name__iexact",
+        "ec_number_exact": "ec_number__iexact",
+        "organism_exact": "organism__iexact",
+        "primary_uniprot_id": "primary_uniprot_id__iexact",
         "organism": "organism__icontains",
         "ec_number": "ec_number__startswith",
         "uniprot": "primary_uniprot_id__iexact",
@@ -94,6 +111,105 @@ def apply_measurement_filters(queryset, params):
                 pass
 
     return queryset
+
+
+COUNT_BUCKETS = (
+    (1, 1, "1"),
+    (2, 2, "2"),
+    (3, 5, "3-5"),
+    (6, 10, "6-10"),
+    (11, 25, "11-25"),
+    (26, 50, "26-50"),
+    (51, 100, "51-100"),
+    (101, None, "101+"),
+)
+
+
+def bucket_for_count(count):
+    for minimum, maximum, label in COUNT_BUCKETS:
+        if count >= minimum and (maximum is None or count <= maximum):
+            return label
+    return "unknown"
+
+
+def bucketed_distribution(rows):
+    counts = Counter()
+    for row in rows:
+        counts[bucket_for_count(row["datapoints"])] += 1
+    return [
+        {"bucket": label, "count": counts.get(label, 0)}
+        for _minimum, _maximum, label in COUNT_BUCKETS
+    ]
+
+
+def release_counts_from_db(measurements, release):
+    return {
+        "datapoints": measurements.count(),
+        "unique_sequences": Sequence.objects.filter(measurements__release=release).distinct().count(),
+        "unique_substrates": Substrate.objects.filter(measurements__release=release).distinct().count(),
+        "unique_ec_numbers": measurements.exclude(ec_number="").values("ec_number").distinct().count(),
+        "rows_with_kcat": measurements.filter(kcat__isnull=False).count(),
+        "rows_with_km": measurements.filter(km__isnull=False).count(),
+        "rows_with_both_kcat_and_km": measurements.filter(
+            kcat__isnull=False,
+            km__isnull=False,
+        ).count(),
+    }
+
+
+def release_download_stats(release):
+    measurements = Measurement.objects.filter(release=release)
+    manifest = release.manifest if isinstance(release.manifest, dict) else {}
+
+    enzyme_rows = list(
+        measurements.values("enzyme_name", "ec_number", "organism", "primary_uniprot_id")
+        .annotate(datapoints=Count("id"))
+        .order_by("-datapoints", "enzyme_name", "ec_number", "organism", "primary_uniprot_id")
+    )
+    substrate_rows = list(
+        measurements.values("substrate__name", "substrate__substrate_id")
+        .annotate(datapoints=Count("id"))
+        .order_by("-datapoints", "substrate__name", "substrate__substrate_id")
+    )
+
+    return {
+        "counts": manifest.get("counts") or release_counts_from_db(measurements, release),
+        "source_db_counts": manifest.get("source_db_counts") or dict(
+            measurements.exclude(source_db="")
+            .values_list("source_db")
+            .annotate(count=Count("id"))
+            .order_by("source_db")
+        ),
+        "verification_status_counts": manifest.get("verification_status_counts") or dict(
+            measurements.exclude(verification_status="")
+            .values_list("verification_status")
+            .annotate(count=Count("id"))
+            .order_by("verification_status")
+        ),
+        "eligibility": manifest.get("eligibility") or {},
+        "distributions": {
+            "enzyme_datapoints": bucketed_distribution(enzyme_rows),
+            "substrate_datapoints": bucketed_distribution(substrate_rows),
+        },
+        "top_enzymes": [
+            {
+                "enzyme_name": row["enzyme_name"],
+                "ec_number": row["ec_number"],
+                "organism": row["organism"],
+                "primary_uniprot_id": row["primary_uniprot_id"],
+                "datapoints": row["datapoints"],
+            }
+            for row in enzyme_rows[:10]
+        ],
+        "top_substrates": [
+            {
+                "substrate_name": row["substrate__name"],
+                "substrate_id": row["substrate__substrate_id"],
+                "datapoints": row["datapoints"],
+            }
+            for row in substrate_rows[:10]
+        ],
+    }
 
 
 def stats(_request):
@@ -215,6 +331,7 @@ def downloads(_request):
     return JsonResponse(
         {
             "release": release_payload(release),
+            "stats": release_download_stats(release),
             "groups": dict(groups),
         }
     )

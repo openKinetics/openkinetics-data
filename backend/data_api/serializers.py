@@ -11,20 +11,36 @@ def metric_payload(value, unit):
     }
 
 
-def sequence_payload(sequence, include_sequence=False):
+def raw_sequence_payload(measurement):
+    raw = measurement.raw if isinstance(measurement.raw, dict) else {}
+    sequence = raw.get("sequence")
+    return sequence if isinstance(sequence, dict) else {}
+
+
+def sequence_payload(sequence, include_sequence=False, raw_sequence=None):
+    raw_sequence = raw_sequence or {}
     payload = {
         "sequence_id": sequence.sequence_id,
         "primary_uniprot_id": sequence.primary_uniprot_id,
         "length": sequence.length,
         "source": sequence.source,
         "source_url": sequence.source_url,
-        "sequence_variant_status": sequence.sequence_variant_status,
-        "mutation_signature": sequence.mutation_signature,
-        "wild_type": sequence.wild_type,
+        "sequence_variant_status": raw_sequence.get(
+            "sequence_variant_status",
+            sequence.sequence_variant_status,
+        ),
+        "mutation_signature": raw_sequence.get("mutation_signature", sequence.mutation_signature),
+        "wild_type": raw_sequence.get("wild_type", sequence.wild_type),
+        "is_mutant": raw_sequence.get("is_mutant", sequence.wild_type is False),
+        "mutation_type": raw_sequence.get("mutation_type"),
+        "assayed_sequence_source": raw_sequence.get("assayed_sequence_source"),
+        "sequence_variant_note": raw_sequence.get("sequence_variant_note"),
     }
     if include_sequence:
         payload["sequence"] = sequence.sequence
         payload["fasta_header"] = sequence.fasta_header
+        payload["wild_type_sequence"] = raw_sequence.get("wild_type_sequence")
+        payload["variant_sequence"] = raw_sequence.get("variant_sequence")
     return payload
 
 
@@ -53,6 +69,7 @@ def split_payload(measurement):
 
 
 def measurement_summary(measurement):
+    raw_sequence = raw_sequence_payload(measurement)
     return {
         "record_key": measurement.record_key,
         "measurement_key": measurement.measurement_key,
@@ -76,12 +93,22 @@ def measurement_summary(measurement):
         "evidence_confidence_tier": measurement.evidence_confidence_tier,
         "paper_grounding_status": measurement.paper_grounding_status,
         "has_proof_excerpt": measurement.has_proof_excerpt,
-        "wild_type": measurement.sequence.wild_type,
-        "sequence_variant_status": measurement.sequence.sequence_variant_status,
+        "wild_type": raw_sequence.get("wild_type", measurement.sequence.wild_type),
+        "is_mutant": raw_sequence.get("is_mutant", measurement.sequence.wild_type is False),
+        "mutation_type": raw_sequence.get("mutation_type"),
+        "mutation_signature": raw_sequence.get(
+            "mutation_signature",
+            measurement.sequence.mutation_signature,
+        ),
+        "sequence_variant_status": raw_sequence.get(
+            "sequence_variant_status",
+            measurement.sequence.sequence_variant_status,
+        ),
     }
 
 
 def measurement_detail(measurement):
+    raw_sequence = raw_sequence_payload(measurement)
     payload = measurement_summary(measurement)
     payload.update(
         {
@@ -95,7 +122,11 @@ def measurement_detail(measurement):
                 "identity_resolution_state": measurement.identity_resolution_state,
                 "uniprot_candidate_ids": measurement.uniprot_candidate_ids,
             },
-            "sequence": sequence_payload(measurement.sequence, include_sequence=True),
+            "sequence": sequence_payload(
+                measurement.sequence,
+                include_sequence=True,
+                raw_sequence=raw_sequence,
+            ),
             "substrate": substrate_payload(measurement.substrate),
             "assay_conditions": {
                 "ph": measurement.ph,
