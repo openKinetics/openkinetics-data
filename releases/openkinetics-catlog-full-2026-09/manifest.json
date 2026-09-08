@@ -1,0 +1,102 @@
+{
+  "api_lookups": {},
+  "attribution": {
+    "catlog": "Data curated by CatLog collaborators, served by OpenKinetics.",
+    "redistribution_note": "Confirm final CatLog redistribution/license terms before public release.",
+    "temporary_citation": "Sajeevan et al., Robust Prediction of Enzyme Variant Kinetics with RealKcat, bioRxiv 2025, DOI 10.1101/2025.02.10.637555."
+  },
+  "candidate_rows_passing_local_filters": 50312,
+  "counts": {
+    "datapoints": 50312,
+    "mutant_rows_using_variant_sequence": 14375,
+    "mutant_rows_without_variant_sequence": 0,
+    "rows_marked_mutant": 14375,
+    "rows_with_both_kcat_and_km": 32022,
+    "rows_with_kcat": 32861,
+    "rows_with_km": 49473,
+    "rows_with_truncated_artifact_input": 1296,
+    "rows_with_variant_sequence": 14375,
+    "rows_with_wild_type_sequence": 46803,
+    "rows_without_primary_uniprot_id": 2656,
+    "sequences_with_truncated_artifact_input": 457,
+    "unique_ec_numbers": 3156,
+    "unique_sequences": 17065,
+    "unique_substrates": 7536
+  },
+  "download_note": "Large embeddings and Pseq2Sites artifacts are distributed as ZIP packages containing sequence metadata plus predictor arrays keyed by sequence_id. Sequences longer than 1024 residues use the first 512 and last 512 residues as artifact model input; sequence_artifact_generation marks those rows.",
+  "eligibility": {
+    "rejected_rows_by_reason": {
+      "disputed": 8,
+      "missing_or_invalid_sequence": 48524,
+      "missing_positive_kcat_or_km": 2603,
+      "missing_smiles": 17877,
+      "missing_unit_for_kcat": 56,
+      "missing_unit_for_km": 432,
+      "mutant_without_variant_sequence": 31592
+    },
+    "require_source_smiles": true
+  },
+  "generated_at": "2026-09-08T11:27:29Z",
+  "record_count": 50312,
+  "release_id": "openkinetics-catlog-full-2026-09",
+  "schema": {
+    "notes": [
+      "Protein sequences are read from catlog-enriched.jsonl.gz.",
+      "Substrate SMILES are read from catlog-enriched.jsonl.gz.",
+      "PubChem CIDs, canonical SMILES, isomeric SMILES, InChIKey, IUPAC names, and molecular formulae are not joined.",
+      "sequence_id is the predictor seqmap ID when available and otherwise sha256(sequence)[:12].",
+      "substrate_id is smiles:sha256(smiles)[:16] when SMILES are present.",
+      "Primary UniProt IDs are retained when present but are not required when an assayed sequence is available.",
+      "Mutant datapoints use variant_sequence as the main sequence; mutant rows without variant_sequence are excluded.",
+      "Sequences longer than 1024 residues are retained, but sequence artifact generation uses the first 512 and last 512 residues as model input.",
+      "Truncated artifact inputs are marked in sequence.sequence_artifact_generation.",
+      "Embeddings and pseq2sites scores are keyed by sequence_id, not embedded in this file."
+    ],
+    "required_per_datapoint": [
+      "record_key",
+      "measurement_key",
+      "measurement_id",
+      "review_key",
+      "enzyme",
+      "sequence",
+      "substrate",
+      "measurements",
+      "assay_conditions",
+      "provenance",
+      "evidence",
+      "demo_splits"
+    ]
+  },
+  "source": {
+    "input_file": "catlog-enriched.jsonl.gz",
+    "input_path": "data/catlog-enriched.jsonl.gz",
+    "input_sha256": "ec9ba98a13f8d366d55f03f0dd6581ad3c95df6aa8a637b8c859652df26a9ac3",
+    "source_kind": "CatLog enriched JSONL export",
+    "source_limitations": [
+      "Rows are included when they have a valid protein sequence string, substrate name, at least one positive kcat or km value, units for present kinetic values, and non-disputed status.",
+      "A primary UniProt ID is not required when the enriched source provides an assayed sequence.",
+      "Rows without source SMILES are excluded by default; pass --include-missing-smiles to retain them with substrate-name-derived IDs.",
+      "PubChem CIDs, canonical/isomeric SMILES, InChIKey, IUPAC names, and molecular formulae are intentionally not joined.",
+      "Substrate labels are normalized for whitespace but not rejected for old demo-only name heuristics when source SMILES are present.",
+      "Mutant rows are included only when variant_sequence is present, because sequence-keyed artifacts must target the assayed mutant sequence.",
+      "Sequences longer than 1024 residues are retained; sequence artifacts are generated from a first-512 plus last-512 truncation and saved under the original sequence_id.",
+      "Raw source envelopes are not included in this artifact."
+    ]
+  },
+  "source_db_counts": {
+    "brenda": 14137,
+    "oed": 21374,
+    "primary_paper_direct": 193,
+    "sabio_rk": 821,
+    "skid": 3630,
+    "uniprot": 10157
+  },
+  "title": "OpenKinetics Data full CatLog enriched export",
+  "verification_status_counts": {
+    "corrected": 6069,
+    "manual_review_required": 10257,
+    "mathematically_inferred": 3160,
+    "unverified": 24509,
+    "verified": 6317
+  }
+}

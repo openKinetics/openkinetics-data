@@ -23,6 +23,11 @@ DEFAULT_RELEASES_DIR = os.environ.get("OPENKINETICS_RELEASES_ROOT", "releases")
 DEFAULT_SEQUENCE_INFO_ROOT = os.environ.get("OPENKINETICS_SEQUENCE_INFO_ROOT", "/sequence_info")
 SEQUENCE_METADATA_PATH = "metadata/sequences.jsonl"
 ARTIFACT_METADATA_PATH = "metadata/artifacts.jsonl"
+TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES = 512
+TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES = 512
+TRUNCATED_ARTIFACT_INPUT_LENGTH = (
+    TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES + TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES
+)
 
 ARTIFACT_SPECS = {
     "esm2": {
@@ -106,7 +111,49 @@ def gzip_text(text):
     return buffer.getvalue()
 
 
+def sequence_artifact_input_sequence(sequence):
+    if len(sequence) <= TRUNCATED_ARTIFACT_INPUT_LENGTH:
+        return sequence
+    return (
+        sequence[:TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES]
+        + sequence[-TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES:]
+    )
+
+
+def computed_artifact_generation(row):
+    sequence = row.get("sequence") or ""
+    input_sequence = sequence_artifact_input_sequence(sequence)
+    was_truncated = len(input_sequence) != len(sequence)
+    payload = {
+        "input_sequence_was_truncated": was_truncated,
+        "input_strategy": "first_512_last_512" if was_truncated else "full_sequence",
+        "original_sequence_length": len(sequence),
+        "input_sequence_length": len(input_sequence),
+        "input_sequence_sha256": hashlib.sha256(input_sequence.encode("utf-8")).hexdigest(),
+    }
+    if was_truncated:
+        payload.update(
+            {
+                "truncation_n_terminal_residues": TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES,
+                "truncation_c_terminal_residues": TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES,
+                "truncation_note": (
+                    "Sequence artifact arrays are stored under the original sequence_id, "
+                    "but model input used the first 512 and last 512 residues."
+                ),
+            }
+        )
+    return payload
+
+
+def artifact_generation(row):
+    existing = row.get("sequence_artifact_generation")
+    if isinstance(existing, dict) and "input_sequence_was_truncated" in existing:
+        return existing
+    return computed_artifact_generation(row)
+
+
 def public_sequence_fields(row):
+    generation = artifact_generation(row)
     return {
         "sequence_id": row["sequence_id"],
         "sequence": row["sequence"],
@@ -117,6 +164,11 @@ def public_sequence_fields(row):
         "sequence_variant_status": row.get("sequence_variant_status"),
         "mutation_signature": row.get("mutation_signature"),
         "wild_type": row.get("wild_type"),
+        "sequence_artifact_generation": generation,
+        "sequence_artifact_input_was_truncated": generation.get("input_sequence_was_truncated", False),
+        "sequence_artifact_input_strategy": generation.get("input_strategy"),
+        "sequence_artifact_input_length": generation.get("input_sequence_length"),
+        "sequence_artifact_input_sha256": generation.get("input_sequence_sha256"),
     }
 
 
@@ -156,8 +208,9 @@ def score_rows(found):
     errors = []
     for item in found:
         source_path = Path(item["source_path"])
+        artifact_length = item.get("sequence_artifact_input_length") or item.get("length") or 0
         try:
-            scores = read_npy_flat_numbers(source_path, max_items=max(item.get("length") or 0, 10000))
+            scores = read_npy_flat_numbers(source_path, max_items=max(artifact_length, 10000))
         except (OSError, NpyReadError) as exc:
             errors.append({"sequence_id": item["sequence_id"], "error": str(exc)})
             continue
@@ -171,9 +224,20 @@ def score_rows(found):
             {
                 "sequence_id": item["sequence_id"],
                 "sequence": item["sequence"],
+                "sequence_artifact_generation": item.get("sequence_artifact_generation"),
+                "sequence_artifact_input_was_truncated": item.get(
+                    "sequence_artifact_input_was_truncated",
+                    False,
+                ),
+                "sequence_artifact_input_strategy": item.get("sequence_artifact_input_strategy"),
+                "sequence_artifact_input_length": item.get("sequence_artifact_input_length"),
+                "sequence_artifact_input_sha256": item.get("sequence_artifact_input_sha256"),
                 "scores": scores,
                 "score_count": len(scores),
                 "aligned_to_sequence": len(scores) == len(item["sequence"]),
+                "aligned_to_sequence_artifact_input": (
+                    len(scores) == (item.get("sequence_artifact_input_length") or len(item["sequence"]))
+                ),
                 "summary": summary,
             }
         )
@@ -223,6 +287,16 @@ def build_model_bundle(release_dir, sequence_info_root, model_key, spec, sequenc
         "array_file_pattern": "%s/{sequence_id}.npy" % spec["bundle_prefix"],
         "score_rows": len(readable_score_rows),
         "score_parse_errors": score_parse_errors,
+        "truncated_artifact_inputs": sum(
+            1 for row in sequence_records if row.get("sequence_artifact_input_was_truncated")
+        ),
+        "long_sequence_artifact_input": {
+            "threshold": TRUNCATED_ARTIFACT_INPUT_LENGTH,
+            "strategy": "first_512_last_512",
+            "outputs_keyed_by": "original_sequence_id",
+            "metadata_field": "sequence_artifact_generation",
+            "flag_field": "sequence_artifact_input_was_truncated",
+        },
     }
     write_json(release_dir / "artifact_reports" / ("%s.json" % model_key), report)
 
@@ -259,6 +333,8 @@ def bundle_readme(model_key, spec, report):
         "artifact_metadata: %s\n"
         "records: %s\n"
         "array_file_pattern: %s/{sequence_id}.npy\n"
+        "truncated_artifact_inputs: %s\n"
+        "long_sequence_strategy: sequences longer than 1024 residues use the first 512 and last 512 residues as model input; arrays stay keyed by the original sequence_id.\n"
     ) % (
         model_key,
         spec["source_root"],
@@ -268,6 +344,7 @@ def bundle_readme(model_key, spec, report):
         ARTIFACT_METADATA_PATH,
         spec["records_path"],
         spec["bundle_prefix"],
+        report["truncated_artifact_inputs"],
     )
 
 

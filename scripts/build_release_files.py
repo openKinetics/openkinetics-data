@@ -13,6 +13,11 @@ from pathlib import Path
 
 DEFAULT_SAMPLE = "data/sample/openkinetics_demo_100.json"
 DEFAULT_RELEASES_DIR = os.environ.get("OPENKINETICS_RELEASES_ROOT", "releases")
+TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES = 512
+TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES = 512
+TRUNCATED_ARTIFACT_INPUT_LENGTH = (
+    TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES + TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES
+)
 
 
 def ensure_dir(path):
@@ -64,10 +69,52 @@ def metric(datapoint, key, attr):
     return datapoint.get("measurements", {}).get(key, {}).get(attr)
 
 
+def sequence_artifact_input_sequence(sequence):
+    if len(sequence) <= TRUNCATED_ARTIFACT_INPUT_LENGTH:
+        return sequence
+    return (
+        sequence[:TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES]
+        + sequence[-TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES:]
+    )
+
+
+def computed_artifact_generation(sequence):
+    sequence = sequence or ""
+    input_sequence = sequence_artifact_input_sequence(sequence)
+    was_truncated = len(input_sequence) != len(sequence)
+    payload = {
+        "input_sequence_was_truncated": was_truncated,
+        "input_strategy": "first_512_last_512" if was_truncated else "full_sequence",
+        "original_sequence_length": len(sequence),
+        "input_sequence_length": len(input_sequence),
+        "input_sequence_sha256": hashlib.sha256(input_sequence.encode("utf-8")).hexdigest(),
+    }
+    if was_truncated:
+        payload.update(
+            {
+                "truncation_n_terminal_residues": TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES,
+                "truncation_c_terminal_residues": TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES,
+                "truncation_note": (
+                    "Sequence artifact arrays are stored under the original sequence_id, "
+                    "but model input used the first 512 and last 512 residues."
+                ),
+            }
+        )
+    return payload
+
+
+def artifact_generation_for(sequence):
+    existing = sequence.get("sequence_artifact_generation")
+    if isinstance(existing, dict) and "input_sequence_was_truncated" in existing:
+        return existing
+    return computed_artifact_generation(sequence.get("sequence") or "")
+
+
 def flat_measurement(datapoint):
     enzyme = datapoint["enzyme"]
     substrate = datapoint["substrate"]
     sequence = datapoint["sequence"]
+    artifact_generation = artifact_generation_for(sequence)
     assay = datapoint["assay_conditions"]
     evidence = datapoint["evidence"]
     provenance = datapoint["provenance"]
@@ -86,6 +133,10 @@ def flat_measurement(datapoint):
         "sequence_variant_status": sequence.get("sequence_variant_status"),
         "mutation_signature": sequence.get("mutation_signature"),
         "wild_type": sequence.get("wild_type"),
+        "sequence_artifact_input_was_truncated": artifact_generation.get("input_sequence_was_truncated", False),
+        "sequence_artifact_input_strategy": artifact_generation.get("input_strategy"),
+        "sequence_artifact_input_length": artifact_generation.get("input_sequence_length"),
+        "sequence_artifact_input_sha256": artifact_generation.get("input_sequence_sha256"),
         "substrate_id": substrate.get("substrate_id"),
         "substrate_name": substrate.get("name"),
         "pubchem_cid": substrate.get("pubchem_cid"),
@@ -118,6 +169,7 @@ def sequence_rows(datapoints):
     for row in datapoints:
         sequence = row["sequence"]
         enzyme = row["enzyme"]
+        artifact_generation = artifact_generation_for(sequence)
         seen[sequence["sequence_id"]] = {
             "sequence_id": sequence["sequence_id"],
             "primary_uniprot_id": enzyme.get("primary_uniprot_id"),
@@ -128,6 +180,13 @@ def sequence_rows(datapoints):
             "sequence_variant_status": sequence.get("sequence_variant_status"),
             "mutation_signature": sequence.get("mutation_signature"),
             "wild_type": sequence.get("wild_type"),
+            "sequence_artifact_generation": artifact_generation,
+            "sequence_artifact_input_was_truncated": (
+                artifact_generation.get("input_sequence_was_truncated", False)
+            ),
+            "sequence_artifact_input_strategy": artifact_generation.get("input_strategy"),
+            "sequence_artifact_input_length": artifact_generation.get("input_sequence_length"),
+            "sequence_artifact_input_sha256": artifact_generation.get("input_sequence_sha256"),
         }
     return [seen[key] for key in sorted(seen)]
 
@@ -225,7 +284,9 @@ def main():
     enriched_manifest["schema"] = sample.get("schema", {})
     enriched_manifest["download_note"] = (
         "Large embeddings and Pseq2Sites artifacts are distributed as ZIP packages containing "
-        "sequence metadata plus predictor arrays keyed by sequence_id."
+        "sequence metadata plus predictor arrays keyed by sequence_id. Sequences longer than "
+        "1024 residues use the first 512 and last 512 residues as artifact model input; "
+        "sequence_artifact_generation marks those rows."
     )
     write_json(release_dir / "manifest.json", enriched_manifest)
 
@@ -281,6 +342,13 @@ def main():
             "artifact_metadata": "metadata/artifacts.jsonl",
             "pseq2sites_scores": "pseq2sites/scores.jsonl.gz",
             "embedding_index_pattern": "embeddings/{model_key}/index.jsonl.gz",
+        },
+        "long_sequence_artifact_input": {
+            "threshold": 1024,
+            "strategy": "first_512_last_512",
+            "outputs_keyed_by": "original_sequence_id",
+            "metadata_field": "sequence_artifact_generation",
+            "flag_field": "sequence_artifact_input_was_truncated",
         },
     }
     write_json(release_dir / "expected_generated_artifacts.json", expected)

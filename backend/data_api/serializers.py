@@ -1,6 +1,10 @@
 """JSON serializers for the public API."""
 
-from .sequence_artifacts import pseq2sites_prediction_payload, sequence_artifacts_payload
+from .sequence_artifacts import (
+    pseq2sites_prediction_payload,
+    sequence_artifact_generation_metadata,
+    sequence_artifacts_payload,
+)
 
 
 def metric_payload(value, unit):
@@ -19,6 +23,9 @@ def raw_sequence_payload(measurement):
 
 def sequence_payload(sequence, include_sequence=False, raw_sequence=None):
     raw_sequence = raw_sequence or {}
+    artifact_generation = raw_sequence.get("sequence_artifact_generation")
+    if not isinstance(artifact_generation, dict):
+        artifact_generation = sequence_artifact_generation_metadata(sequence.sequence)
     payload = {
         "sequence_id": sequence.sequence_id,
         "primary_uniprot_id": sequence.primary_uniprot_id,
@@ -35,6 +42,14 @@ def sequence_payload(sequence, include_sequence=False, raw_sequence=None):
         "mutation_type": raw_sequence.get("mutation_type"),
         "assayed_sequence_source": raw_sequence.get("assayed_sequence_source"),
         "sequence_variant_note": raw_sequence.get("sequence_variant_note"),
+        "sequence_artifact_generation": artifact_generation,
+        "sequence_artifact_input_was_truncated": artifact_generation.get(
+            "input_sequence_was_truncated",
+            False,
+        ),
+        "sequence_artifact_input_strategy": artifact_generation.get("input_strategy"),
+        "sequence_artifact_input_length": artifact_generation.get("input_sequence_length"),
+        "sequence_artifact_input_sha256": artifact_generation.get("input_sequence_sha256"),
     }
     if include_sequence:
         payload["sequence"] = sequence.sequence
@@ -70,6 +85,9 @@ def split_payload(measurement):
 
 def measurement_summary(measurement):
     raw_sequence = raw_sequence_payload(measurement)
+    artifact_generation = raw_sequence.get("sequence_artifact_generation")
+    if not isinstance(artifact_generation, dict):
+        artifact_generation = sequence_artifact_generation_metadata(measurement.sequence.sequence)
     return {
         "record_key": measurement.record_key,
         "measurement_key": measurement.measurement_key,
@@ -104,6 +122,12 @@ def measurement_summary(measurement):
             "sequence_variant_status",
             measurement.sequence.sequence_variant_status,
         ),
+        "sequence_artifact_input_was_truncated": artifact_generation.get(
+            "input_sequence_was_truncated",
+            False,
+        ),
+        "sequence_artifact_input_strategy": artifact_generation.get("input_strategy"),
+        "sequence_artifact_input_length": artifact_generation.get("input_sequence_length"),
     }
 
 

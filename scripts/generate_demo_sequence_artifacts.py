@@ -45,6 +45,11 @@ from typing import Any, Iterator
 DEFAULT_RELEASE_ID = "openkinetics-catlog-demo-2026-08"
 OPENKINETICS_REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SAMPLE_PATH = OPENKINETICS_REPO_ROOT / "data" / "sample" / "openkinetics_demo_100.json"
+TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES = 512
+TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES = 512
+TRUNCATED_ARTIFACT_INPUT_LENGTH = (
+    TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES + TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES
+)
 DEFAULT_RELEASES_DIR = Path(
     os.environ.get("OPENKINETICS_RELEASES_ROOT", str(OPENKINETICS_REPO_ROOT / "releases"))
 )
@@ -274,6 +279,43 @@ def clean_sequence(sequence: str) -> str:
     return "".join(str(sequence).split()).upper()
 
 
+def sequence_artifact_input_sequence(sequence: str) -> str:
+    if len(sequence) <= TRUNCATED_ARTIFACT_INPUT_LENGTH:
+        return sequence
+    return (
+        sequence[:TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES]
+        + sequence[-TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES:]
+    )
+
+
+def sequence_artifact_input_length(sequence: str) -> int:
+    return len(sequence_artifact_input_sequence(sequence))
+
+
+def sequence_artifact_generation_summary(sequence: str) -> dict[str, object]:
+    input_sequence = sequence_artifact_input_sequence(sequence)
+    was_truncated = len(input_sequence) != len(sequence)
+    summary = {
+        "input_sequence_was_truncated": was_truncated,
+        "input_strategy": "first_512_last_512" if was_truncated else "full_sequence",
+        "original_sequence_length": len(sequence),
+        "input_sequence_length": len(input_sequence),
+        "input_sequence_sha256": hashlib.sha256(input_sequence.encode("utf-8")).hexdigest(),
+    }
+    if was_truncated:
+        summary.update(
+            {
+                "truncation_n_terminal_residues": TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES,
+                "truncation_c_terminal_residues": TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES,
+                "truncation_note": (
+                    "Sequence artifact arrays are stored under the original sequence_id, "
+                    "but model input used the first 512 and last 512 residues."
+                ),
+            }
+        )
+    return summary
+
+
 def load_sequences_from_sample(path: Path) -> tuple[list[tuple[str, str]], int]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     datapoints = payload.get("datapoints", [])
@@ -420,6 +462,26 @@ def artifact_path(sequence_info_root: Path, model_key: str, sequence_id: str) ->
     return sequence_info_root / ARTIFACT_ROOTS[model_key] / f"{sequence_id}.npy"
 
 
+def expected_artifact_shape(model_key: str, sequence: str) -> tuple[int, ...] | None:
+    expected_length = sequence_artifact_input_length(sequence)
+    if model_key == "pseq2sites":
+        return (expected_length,)
+    return (expected_length, -1)
+
+
+def artifact_shape_matches(model_key: str, sequence: str, path: Path) -> bool:
+    try:
+        shape = read_npy_shape(path)
+    except Exception:
+        return False
+    expected = expected_artifact_shape(model_key, sequence)
+    if expected is None:
+        return True
+    if model_key == "pseq2sites":
+        return shape == expected
+    return len(shape) == 2 and int(shape[0]) == expected[0]
+
+
 def missing_artifact_ids(
     sequences: list[DemoSequence],
     *,
@@ -432,7 +494,14 @@ def missing_artifact_ids(
     return [
         row.sequence_id
         for row in sequences
-        if not artifact_path(sequence_info_root, model_key, row.sequence_id).exists()
+        if (
+            not artifact_path(sequence_info_root, model_key, row.sequence_id).exists()
+            or not artifact_shape_matches(
+                model_key,
+                row.sequence,
+                artifact_path(sequence_info_root, model_key, row.sequence_id),
+            )
+        )
     ]
 
 
@@ -465,10 +534,16 @@ def prepared_inputs(
 ) -> Iterator[PreparedInputs]:
     selected_ids = set(sequence_ids or [row.sequence_id for row in sequences])
     seq_id_to_seq = {
-        row.sequence_id: row.sequence
+        row.sequence_id: sequence_artifact_input_sequence(row.sequence)
         for row in sequences
         if row.sequence_id in selected_ids
     }
+    truncated_count = sum(
+        1
+        for row in sequences
+        if row.sequence_id in selected_ids
+        and sequence_artifact_input_length(row.sequence) != row.length
+    )
     with tempfile.TemporaryDirectory(prefix="openkinetics_sequence_artifacts_") as tmp_raw:
         tmp_dir = Path(tmp_raw)
         seq_file = tmp_dir / "seq_ids.txt"
@@ -486,6 +561,12 @@ def prepared_inputs(
             json.dumps(seq_id_to_seq, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        if truncated_count:
+            print(
+                "artifact_input_truncation "
+                f"sequences={truncated_count} strategy=first_512_last_512 "
+                "outputs_keyed_by=original_sequence_id"
+            )
         yield PreparedInputs(
             tmp_dir=tmp_dir,
             seq_file=seq_file,
@@ -566,6 +647,30 @@ def read_binding_site_rows(path: Path) -> dict[str, str]:
     return rows
 
 
+def pseq2sites_tsv_ids_needing_scores(
+    sequences: list[DemoSequence],
+    existing_rows: dict[str, str],
+    *,
+    force: bool,
+) -> list[str]:
+    if force:
+        return [row.sequence_id for row in sequences]
+    missing = []
+    for row in sequences:
+        score_text = existing_rows.get(row.sequence_id)
+        if not score_text:
+            missing.append(row.sequence_id)
+            continue
+        try:
+            score_count = len(score_text_to_values(score_text))
+        except ValueError:
+            missing.append(row.sequence_id)
+            continue
+        if score_count != sequence_artifact_input_length(row.sequence):
+            missing.append(row.sequence_id)
+    return missing
+
+
 def run_pseq2sites(
     *,
     sequences: list[DemoSequence],
@@ -601,6 +706,8 @@ if bs_path.exists():
     bs_df = pd.read_csv(bs_path, sep="\t")
 else:
     bs_df = pd.DataFrame(columns=["PDB", "Pred_BS_Scores"])
+if "PDB" in bs_df.columns and not bs_df.empty:
+    bs_df = bs_df[~bs_df["PDB"].astype(str).isin(seq_map.keys())]
 get_sites(seq_map, bs_df, batch_size=batch_size, save_path=str(bs_path), return_prot_t5=False)
 """
 
@@ -687,10 +794,12 @@ def convert_pseq2sites_scores(
             skipped += 1
             continue
         values = score_text_to_values(rows[row.sequence_id])
-        if len(values) != row.length:
+        expected_length = sequence_artifact_input_length(row.sequence)
+        if len(values) != expected_length:
             raise SystemExit(
                 f"Pseq2Sites score length mismatch for {row.sequence_id}: "
-                f"scores={len(values)} sequence={row.length}"
+                f"scores={len(values)} artifact_input_sequence={expected_length} "
+                f"original_sequence={row.length}"
             )
         print(f"pseq2sites: {'would write' if dry_run else 'writing'} {out_path}")
         if not dry_run:
@@ -718,14 +827,16 @@ def validate_artifacts(
                 errors.append(f"{model_key}:{row.sequence_id} unreadable {exc}")
                 continue
             if model_key == "pseq2sites":
-                if shape != (row.length,):
+                expected_length = sequence_artifact_input_length(row.sequence)
+                if shape != (expected_length,):
                     errors.append(
-                        f"{model_key}:{row.sequence_id} shape={shape} expected=({row.length},)"
+                        f"{model_key}:{row.sequence_id} shape={shape} expected=({expected_length},)"
                     )
             else:
-                if len(shape) != 2 or int(shape[0]) != row.length:
+                expected_length = sequence_artifact_input_length(row.sequence)
+                if len(shape) != 2 or int(shape[0]) != expected_length:
                     errors.append(
-                        f"{model_key}:{row.sequence_id} shape={shape} expected first dim {row.length}"
+                        f"{model_key}:{row.sequence_id} shape={shape} expected first dim {expected_length}"
                     )
     if errors:
         print("Artifact validation failed:")
@@ -818,20 +929,32 @@ def submit_gpu_service_job(
 ) -> str | None:
     selected_ids = set(sequence_ids)
     seq_id_to_seq = {
-        row.sequence_id: row.sequence
+        row.sequence_id: sequence_artifact_input_sequence(row.sequence)
         for row in sequences
         if row.sequence_id in selected_ids
     }
+    truncated_count = sum(
+        1
+        for row in sequences
+        if row.sequence_id in selected_ids
+        and sequence_artifact_input_length(row.sequence) != row.length
+    )
     payload = {
         "method_key": "OpenKinetics-Data",
         "target": "demo_sequence_artifacts",
         "profile": "release_residue_matrices",
         "step_work": {step_key: sequence_ids},
         "seq_id_to_seq": seq_id_to_seq,
+        "sequence_artifact_generation": {
+            row.sequence_id: sequence_artifact_generation_summary(row.sequence)
+            for row in sequences
+            if row.sequence_id in selected_ids
+        },
     }
     print(
         "gpu_service_submit "
-        f"url={base_url}/embed/jobs step={step_key} sequences={len(sequence_ids)}"
+        f"url={base_url}/embed/jobs step={step_key} sequences={len(sequence_ids)} "
+        f"truncated_artifact_inputs={truncated_count}"
     )
     if dry_run:
         print(json.dumps({**payload, "seq_id_to_seq": f"<{len(seq_id_to_seq)} sequences>"}, indent=2))
@@ -1013,7 +1136,11 @@ def run_worker_mode(args: argparse.Namespace) -> int:
     if "pseq2sites" in models:
         binding_sites_path = media_path / "pseq2sites" / "binding_sites_all.tsv"
         existing_rows = read_binding_site_rows(binding_sites_path)
-        missing_tsv_ids = [row.sequence_id for row in sequences if row.sequence_id not in existing_rows]
+        missing_tsv_ids = pseq2sites_tsv_ids_needing_scores(
+            sequences,
+            existing_rows,
+            force=args.force,
+        )
         run_pseq2sites(
             sequences=sequences,
             sequence_ids=missing_tsv_ids,

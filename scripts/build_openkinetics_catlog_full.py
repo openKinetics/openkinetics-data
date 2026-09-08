@@ -25,6 +25,11 @@ DEFAULT_SOURCE_CANDIDATES = (
 )
 DEFAULT_OUTPUT = "data/openkinetics_catlog_full.json"
 DEFAULT_RELEASE_ID = "openkinetics-catlog-full-2026-09"
+TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES = 512
+TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES = 512
+TRUNCATED_ARTIFACT_INPUT_LENGTH = (
+    TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES + TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES
+)
 DEFAULT_SEQMAP_DB = os.environ.get(
     "OPENKINETICS_SEQMAP_DB",
     os.path.join(os.environ.get("OPENKINETICS_SEQUENCE_INFO_ROOT", "/sequence_info"), "seqmap.sqlite3"),
@@ -129,10 +134,44 @@ def selected_sequence(record):
     return source_sequence, "sequence"
 
 
+def sequence_artifact_input_sequence(sequence):
+    if len(sequence) <= TRUNCATED_ARTIFACT_INPUT_LENGTH:
+        return sequence
+    return (
+        sequence[:TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES]
+        + sequence[-TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES:]
+    )
+
+
+def sequence_artifact_generation_payload(sequence):
+    input_sequence = sequence_artifact_input_sequence(sequence)
+    was_truncated = len(input_sequence) != len(sequence)
+    payload = {
+        "input_sequence_was_truncated": was_truncated,
+        "input_strategy": "first_512_last_512" if was_truncated else "full_sequence",
+        "original_sequence_length": len(sequence),
+        "input_sequence_length": len(input_sequence),
+        "input_sequence_sha256": sha256_text(input_sequence),
+    }
+    if was_truncated:
+        payload.update(
+            {
+                "truncation_n_terminal_residues": TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES,
+                "truncation_c_terminal_residues": TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES,
+                "truncation_note": (
+                    "Sequence artifact arrays are stored under the original sequence_id, "
+                    "but model input used the first 512 and last 512 residues."
+                ),
+            }
+        )
+    return payload
+
+
 def eligibility_reason(record, require_smiles=True):
     if is_mutant_record(record) and clean_sequence(record.get("variant_sequence")) is None:
         return "mutant_without_variant_sequence"
-    if selected_sequence(record)[0] is None:
+    sequence = selected_sequence(record)[0]
+    if sequence is None:
         return "missing_or_invalid_sequence"
     if not has_value(record, "kcat") and not has_value(record, "km"):
         return "missing_positive_kcat_or_km"
@@ -263,6 +302,7 @@ def build_datapoint(record, line_number, sequence_resolver):
             "variant_sequence": variant_sequence,
             "sequence_variant_note": record.get("sequence_variant_note"),
             "assayed_sequence_source": assayed_sequence_source,
+            "sequence_artifact_generation": sequence_artifact_generation_payload(sequence),
         },
         "substrate": {
             "substrate_id": substrate_id,
@@ -336,7 +376,12 @@ def iter_jsonl(path):
                 raise ValueError("Invalid JSON on line %s: %s" % (line_number, exc)) from exc
 
 
-def iter_eligible_records(path, require_smiles=True, limit=None, rejection_counts=None):
+def iter_eligible_records(
+    path,
+    require_smiles=True,
+    limit=None,
+    rejection_counts=None,
+):
     yielded = 0
     for line_number, record in iter_jsonl(path):
         reason = eligibility_reason(record, require_smiles=require_smiles)
@@ -359,6 +404,8 @@ def build_schema(require_smiles=True):
         "substrate_id is smiles:sha256(smiles)[:16] when SMILES are present.",
         "Primary UniProt IDs are retained when present but are not required when an assayed sequence is available.",
         "Mutant datapoints use variant_sequence as the main sequence; mutant rows without variant_sequence are excluded.",
+        "Sequences longer than 1024 residues are retained, but sequence artifact generation uses the first 512 and last 512 residues as model input.",
+        "Truncated artifact inputs are marked in sequence.sequence_artifact_generation.",
         "Embeddings and pseq2sites scores are keyed by sequence_id, not embedded in this file.",
     ]
     if not require_smiles:
@@ -398,6 +445,8 @@ def empty_stats():
         "rows_with_wild_type_sequence": 0,
         "mutant_rows_using_variant_sequence": 0,
         "mutant_rows_without_variant_sequence": 0,
+        "rows_with_truncated_artifact_input": 0,
+        "sequences_with_truncated_artifact_input": set(),
         "source_db_counts": defaultdict(int),
         "verification_status_counts": defaultdict(int),
         "rejection_counts": Counter(),
@@ -429,6 +478,10 @@ def update_stats(stats, datapoint):
         stats["rows_with_variant_sequence"] += 1
     if datapoint["sequence"].get("wild_type_sequence"):
         stats["rows_with_wild_type_sequence"] += 1
+    artifact_generation = datapoint["sequence"].get("sequence_artifact_generation") or {}
+    if artifact_generation.get("input_sequence_was_truncated"):
+        stats["rows_with_truncated_artifact_input"] += 1
+        stats["sequences_with_truncated_artifact_input"].add(datapoint["sequence"]["sequence_id"])
     source_db = datapoint["provenance"].get("source_db") or "unknown"
     status = datapoint["evidence"].get("verification_status") or "unknown"
     stats["source_db_counts"][source_db] += 1
@@ -467,6 +520,8 @@ def serializable_stats(stats):
         "rows_with_wild_type_sequence": stats["rows_with_wild_type_sequence"],
         "mutant_rows_using_variant_sequence": stats["mutant_rows_using_variant_sequence"],
         "mutant_rows_without_variant_sequence": stats["mutant_rows_without_variant_sequence"],
+        "rows_with_truncated_artifact_input": stats["rows_with_truncated_artifact_input"],
+        "sequences_with_truncated_artifact_input": len(stats["sequences_with_truncated_artifact_input"]),
     }
 
 
@@ -478,6 +533,7 @@ def build_manifest(args, source_sha256, stats):
         "PubChem CIDs, canonical/isomeric SMILES, InChIKey, IUPAC names, and molecular formulae are intentionally not joined.",
         "Substrate labels are normalized for whitespace but not rejected for old demo-only name heuristics when source SMILES are present.",
         "Mutant rows are included only when variant_sequence is present, because sequence-keyed artifacts must target the assayed mutant sequence.",
+        "Sequences longer than 1024 residues are retained; sequence artifacts are generated from a first-512 plus last-512 truncation and saved under the original sequence_id.",
         "Raw source envelopes are not included in this artifact.",
     ]
     if args.limit is not None:

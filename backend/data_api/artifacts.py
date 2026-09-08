@@ -20,6 +20,10 @@ MEASUREMENT_FIELDS = [
     "sequence_variant_status",
     "mutation_signature",
     "wild_type",
+    "sequence_artifact_input_was_truncated",
+    "sequence_artifact_input_strategy",
+    "sequence_artifact_input_length",
+    "sequence_artifact_input_sha256",
     "substrate_id",
     "substrate_name",
     "pubchem_cid",
@@ -56,6 +60,11 @@ SEQUENCE_FIELDS = [
     "sequence_variant_status",
     "mutation_signature",
     "wild_type",
+    "sequence_artifact_generation",
+    "sequence_artifact_input_was_truncated",
+    "sequence_artifact_input_strategy",
+    "sequence_artifact_input_length",
+    "sequence_artifact_input_sha256",
 ]
 
 SUBSTRATE_FIELDS = [
@@ -95,6 +104,11 @@ SEQUENCE_ARTIFACT_INDEX_FIELDS = [
     "array_dtype",
     "size_bytes",
     "sha256",
+    "sequence_artifact_generation",
+    "sequence_artifact_input_was_truncated",
+    "sequence_artifact_input_strategy",
+    "sequence_artifact_input_length",
+    "sequence_artifact_input_sha256",
 ]
 
 
@@ -163,7 +177,8 @@ def embedding_bundle_details(model_key, array_path):
         SEQUENCE_ARTIFACT_INDEX_FIELDS,
         [
             "Use sequence_id to join rows to measurements.csv.gz and sequences.jsonl.gz.",
-            "Each .npy matrix is aligned to the sequence by residue order.",
+            "For sequences up to 1024 residues, each .npy matrix is aligned to the full sequence by residue order.",
+            "For sequences longer than 1024 residues, embeddings are generated from the first 512 and last 512 residues, saved under the original sequence_id, and marked by sequence_artifact_input_was_truncated.",
         ],
     )
 
@@ -195,8 +210,18 @@ def pseq2sites_bundle_details():
                 "Raw per-residue 0-1 binding-site probability vector for one sequence.",
             ),
         ],
-        SEQUENCE_ARTIFACT_INDEX_FIELDS + ["scores", "score_count", "aligned_to_sequence", "summary"],
-        ["Scores are aligned one value per residue when score_count equals sequence length."],
+        SEQUENCE_ARTIFACT_INDEX_FIELDS
+        + [
+            "scores",
+            "score_count",
+            "aligned_to_sequence",
+            "aligned_to_sequence_artifact_input",
+            "summary",
+        ],
+        [
+            "Scores are aligned one value per residue when score_count equals sequence length.",
+            "For sequences longer than 1024 residues, scores are generated from the first 512 and last 512 residues and marked by sequence_artifact_input_was_truncated.",
+        ],
     )
 
 

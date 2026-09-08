@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useParams } from "react-router-dom";
 import {
+  AlertTriangle,
   ChevronDown,
   ChevronRight,
   Database,
@@ -60,6 +61,34 @@ function formatBytes(bytes) {
 function formatScore(value) {
   if (typeof value !== "number") return "n/a";
   return value.toFixed(3);
+}
+
+function artifactInputTokens(sequence, generation = {}) {
+  const residues = sequence ? sequence.split("") : [];
+  if (!generation.input_sequence_was_truncated) {
+    return residues.map((residue, index) => ({
+      residue,
+      originalPosition: index + 1,
+      scoreIndex: index
+    }));
+  }
+  const nTerminal = generation.truncation_n_terminal_residues || 512;
+  const cTerminal = generation.truncation_c_terminal_residues || 512;
+  const tailStart = Math.max(residues.length - cTerminal, nTerminal);
+  const omitted = Math.max(tailStart - nTerminal, 0);
+  return [
+    ...residues.slice(0, nTerminal).map((residue, index) => ({
+      residue,
+      originalPosition: index + 1,
+      scoreIndex: index
+    })),
+    { gap: true, omitted },
+    ...residues.slice(tailStart).map((residue, index) => ({
+      residue,
+      originalPosition: tailStart + index + 1,
+      scoreIndex: nTerminal + index
+    }))
+  ];
 }
 
 function enzymeIdentityKey(row) {
@@ -653,6 +682,12 @@ function MeasurementDetailPanels({ row, embedded = false }) {
               <div>
                 <h3>{artifact.label}</h3>
                 <p>{artifact.description}</p>
+                {artifact.sequence_artifact_input_was_truncated ? (
+                  <p className="artifact-note">
+                    <AlertTriangle size={14} aria-hidden="true" />
+                    Generated from first 512 + last 512 residues; saved under the original sequence ID.
+                  </p>
+                ) : null}
                 <small>
                   {artifact.available
                     ? `${formatBytes(artifact.size_bytes)} · ${artifact.relative_path}`
@@ -695,6 +730,7 @@ function MeasurementDetailPanels({ row, embedded = false }) {
 
 function ProteinSequencePanel({ row }) {
   const sequence = row.sequence || {};
+  const artifactGeneration = sequence.sequence_artifact_generation || {};
   return (
     <Panel title="Protein sequence">
       <dl className="key-values">
@@ -714,7 +750,19 @@ function ProteinSequencePanel({ row }) {
         <dt>Mutation type</dt><dd>{formatText(sequence.mutation_type)}</dd>
         <dt>Variant status</dt><dd>{formatText(sequence.sequence_variant_status)}</dd>
         <dt>Assayed sequence</dt><dd>{formatText(sequence.assayed_sequence_source)}</dd>
+        <dt>Artifact input</dt>
+        <dd>
+          {artifactGeneration.input_sequence_was_truncated
+            ? `${formatNumber(artifactGeneration.input_sequence_length)} aa from first 512 + last 512`
+            : `${formatNumber(artifactGeneration.input_sequence_length || sequence.length)} aa full sequence`}
+        </dd>
       </dl>
+      {artifactGeneration.input_sequence_was_truncated ? (
+        <p className="truncation-note">
+          <AlertTriangle size={15} aria-hidden="true" />
+          Sequence artifacts use the first 512 and last 512 residues as model input. Arrays remain keyed by the original sequence ID.
+        </p>
+      ) : null}
       {sequence.sequence_variant_note ? (
         <p className="evidence-note">{sequence.sequence_variant_note}</p>
       ) : null}
@@ -741,6 +789,7 @@ function SequenceTextDetails({ title, sequence }) {
 
 function BindingSiteLegend({ prediction }) {
   const available = prediction?.available && prediction?.scores?.length;
+  const generation = prediction?.sequence_artifact_generation || {};
   if (!available) {
     return (
       <div className="binding-site-summary muted">
@@ -750,7 +799,9 @@ function BindingSiteLegend({ prediction }) {
     );
   }
   const summary = prediction.summary || {};
-  const alignment = prediction.aligned_to_sequence
+  const alignment = generation.input_sequence_was_truncated
+    ? `${prediction.score_count} scores for ${prediction.sequence_artifact_input_length} residue artifact input from ${prediction.residue_count} residues`
+    : prediction.aligned_to_sequence
     ? `${prediction.score_count} scores aligned to ${prediction.residue_count} residues`
     : `${prediction.score_count} scores for ${prediction.residue_count} residues`;
   return (
@@ -773,27 +824,37 @@ function BindingSiteLegend({ prediction }) {
 }
 
 function SequenceHeatmap({ sequence, prediction }) {
-  const residues = sequence ? sequence.split("") : [];
   const scores = prediction?.scores || [];
   const hasScores = prediction?.available && scores.length > 0;
+  const tokens = artifactInputTokens(
+    sequence,
+    hasScores ? prediction?.sequence_artifact_generation || {} : {}
+  );
   return (
     <div
       className={`sequence-heatmap ${hasScores ? "" : "sequence-heatmap-plain"}`}
       aria-label="Protein sequence colored by Pseq2Sites binding-site likelihood"
     >
-      {residues.map((residue, index) => {
-        const score = typeof scores[index] === "number" ? scores[index] : null;
+      {tokens.map((token, index) => {
+        if (token.gap) {
+          return (
+            <span className="residue-gap" key={`gap-${index}`}>
+              {formatNumber(token.omitted)} omitted
+            </span>
+          );
+        }
+        const score = typeof scores[token.scoreIndex] === "number" ? scores[token.scoreIndex] : null;
         const title = score === null
-          ? `Residue ${index + 1}: ${residue}`
-          : `Residue ${index + 1}: ${residue}, Pseq2Sites ${formatScore(score)}`;
+          ? `Residue ${token.originalPosition}: ${token.residue}`
+          : `Residue ${token.originalPosition}: ${token.residue}, Pseq2Sites ${formatScore(score)}`;
         return (
           <span
             className="residue-token"
-            key={`${index}-${residue}`}
+            key={`${index}-${token.originalPosition}-${token.residue}`}
             style={hasScores ? residueScoreStyle(score) : undefined}
             title={title}
           >
-            {residue}
+            {token.residue}
           </span>
         );
       })}
@@ -839,7 +900,7 @@ function DownloadStatsPanel({ stats, loading }) {
     ["Substrates", counts.unique_substrates],
     ["EC numbers", counts.unique_ec_numbers],
     ["Mutants", counts.rows_marked_mutant],
-    ["kcat + Km", counts.rows_with_both_kcat_and_km]
+    ["Truncated inputs", counts.sequences_with_truncated_artifact_input]
   ];
 
   return (

@@ -20,7 +20,7 @@ from .npy_utils import NpyReadError, read_npy_flat_numbers, read_npy_metadata
 SEQUENCE_ARTIFACT_DEFINITIONS = {
     "esm2_residue": {
         "label": "ESM2 residue embeddings",
-        "description": "ZIP package containing the sequence metadata and full per-residue ESM2 .npy matrix.",
+        "description": "ZIP package containing sequence metadata and the per-residue ESM2 .npy matrix.",
         "content_type": "application/zip",
         "raw_filename_suffix": "esm2_residue.npy",
         "download_filename_suffix": "esm2_residue.zip",
@@ -30,7 +30,7 @@ SEQUENCE_ARTIFACT_DEFINITIONS = {
     },
     "esmc_residue": {
         "label": "ESMC residue embeddings",
-        "description": "ZIP package containing the sequence metadata and full per-residue ESMC .npy matrix.",
+        "description": "ZIP package containing sequence metadata and the per-residue ESMC .npy matrix.",
         "content_type": "application/zip",
         "raw_filename_suffix": "esmc_residue.npy",
         "download_filename_suffix": "esmc_residue.zip",
@@ -40,7 +40,7 @@ SEQUENCE_ARTIFACT_DEFINITIONS = {
     },
     "prot_t5_residue": {
         "label": "ProtT5 residue embeddings",
-        "description": "ZIP package containing the sequence metadata and full per-residue ProtT5 .npy matrix.",
+        "description": "ZIP package containing sequence metadata and the per-residue ProtT5 .npy matrix.",
         "content_type": "application/zip",
         "raw_filename_suffix": "prot_t5_residue.npy",
         "download_filename_suffix": "prot_t5_residue.zip",
@@ -61,10 +61,48 @@ SEQUENCE_ARTIFACT_DEFINITIONS = {
 }
 
 PSEQ2SITES_PREVIEW_LIMIT = 10000
+TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES = 512
+TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES = 512
+TRUNCATED_ARTIFACT_INPUT_LENGTH = (
+    TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES + TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES
+)
 
 
 def sequence_sha256(sequence):
     return hashlib.sha256(sequence.encode("utf-8")).hexdigest()
+
+
+def sequence_artifact_input_sequence(sequence):
+    if len(sequence) <= TRUNCATED_ARTIFACT_INPUT_LENGTH:
+        return sequence
+    return (
+        sequence[:TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES]
+        + sequence[-TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES:]
+    )
+
+
+def sequence_artifact_generation_metadata(sequence):
+    input_sequence = sequence_artifact_input_sequence(sequence)
+    was_truncated = len(input_sequence) != len(sequence)
+    payload = {
+        "input_sequence_was_truncated": was_truncated,
+        "input_strategy": "first_512_last_512" if was_truncated else "full_sequence",
+        "original_sequence_length": len(sequence),
+        "input_sequence_length": len(input_sequence),
+        "input_sequence_sha256": sequence_sha256(input_sequence),
+    }
+    if was_truncated:
+        payload.update(
+            {
+                "truncation_n_terminal_residues": TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES,
+                "truncation_c_terminal_residues": TRUNCATED_ARTIFACT_C_TERMINAL_RESIDUES,
+                "truncation_note": (
+                    "Sequence artifact arrays are stored under the original sequence_id, "
+                    "but model input used the first 512 and last 512 residues."
+                ),
+            }
+        )
+    return payload
 
 
 def fallback_sequence_id(sequence):
@@ -103,6 +141,7 @@ def artifact_path(sequence_id, artifact_key):
 
 
 def sequence_metadata(sequence):
+    generation = sequence_artifact_generation_metadata(sequence.sequence)
     return {
         "sequence_id": sequence.sequence_id,
         "sequence": sequence.sequence,
@@ -114,6 +153,11 @@ def sequence_metadata(sequence):
         "sequence_variant_status": sequence.sequence_variant_status,
         "mutation_signature": sequence.mutation_signature,
         "wild_type": sequence.wild_type,
+        "sequence_artifact_generation": generation,
+        "sequence_artifact_input_was_truncated": generation["input_sequence_was_truncated"],
+        "sequence_artifact_input_strategy": generation["input_strategy"],
+        "sequence_artifact_input_length": generation["input_sequence_length"],
+        "sequence_artifact_input_sha256": generation["input_sequence_sha256"],
     }
 
 
@@ -147,14 +191,15 @@ def sequence_artifact_format_details(artifact_key):
             {
                 "path": "pseq2sites/scores.json",
                 "format": "JSON object",
-                "description": "sequence_id, sequence, and a scores array aligned one value per residue when parsing succeeds.",
+                "description": "sequence_id, sequence, artifact-input metadata, and readable scores when parsing succeeds.",
             }
         )
     return {
         "summary": "Single-sequence ZIP package with the sequence metadata and predictor artifact array.",
         "files": files,
         "notes": [
-            "All residue-level arrays are aligned to the amino-acid sequence by 1-based residue position.",
+            "For sequences up to 1024 residues, residue-level arrays are aligned to the full amino-acid sequence by 1-based residue position.",
+            "For sequences longer than 1024 residues, arrays are generated from the first 512 and last 512 residues and remain keyed by the original sequence_id.",
             "Use sequence_id as the stable join key across release tables, sequence metadata, and arrays.",
         ],
     }
@@ -180,6 +225,8 @@ def _score_summary(scores):
 
 def pseq2sites_prediction_payload(sequence):
     sequence_id = sequence.sequence_id or fallback_sequence_id(sequence.sequence)
+    generation = sequence_artifact_generation_metadata(sequence.sequence)
+    artifact_input_length = generation["input_sequence_length"]
     path = artifact_path(sequence_id, "pseq2sites_scores")
     payload = {
         "artifact_key": "pseq2sites_scores",
@@ -188,7 +235,10 @@ def pseq2sites_prediction_payload(sequence):
         "scores": [],
         "score_count": 0,
         "residue_count": len(sequence.sequence),
+        "sequence_artifact_generation": generation,
+        "sequence_artifact_input_length": artifact_input_length,
         "aligned_to_sequence": False,
+        "aligned_to_sequence_artifact_input": False,
         "summary": {"min": None, "max": None, "mean": None},
         "message": "Pseq2Sites score file is not available for this sequence.",
     }
@@ -205,8 +255,13 @@ def pseq2sites_prediction_payload(sequence):
             "scores": scores,
             "score_count": len(scores),
             "aligned_to_sequence": len(scores) == len(sequence.sequence),
+            "aligned_to_sequence_artifact_input": len(scores) == artifact_input_length,
             "summary": _score_summary(scores),
-            "message": "",
+            "message": (
+                "Scores were generated from the first 512 and last 512 residues."
+                if generation["input_sequence_was_truncated"]
+                else ""
+            ),
         }
     )
     return payload
@@ -218,6 +273,7 @@ def sequence_artifact_archive(sequence, artifact_key, path):
     array_path = definition["array_path"].format(sequence_id=sequence_id)
     array_metadata = _array_metadata(path)
     sequence_payload = sequence_metadata(sequence)
+    artifact_generation = sequence_payload["sequence_artifact_generation"]
     score_payload = None
     score_error = ""
     files = [
@@ -231,16 +287,26 @@ def sequence_artifact_archive(sequence, artifact_key, path):
             score_payload = {
                 "sequence_id": sequence_id,
                 "sequence": sequence.sequence,
+                "sequence_artifact_generation": artifact_generation,
+                "sequence_artifact_input_was_truncated": artifact_generation[
+                    "input_sequence_was_truncated"
+                ],
+                "sequence_artifact_input_strategy": artifact_generation["input_strategy"],
+                "sequence_artifact_input_length": artifact_generation["input_sequence_length"],
+                "sequence_artifact_input_sha256": artifact_generation["input_sequence_sha256"],
                 "scores": scores,
                 "score_count": len(scores),
                 "aligned_to_sequence": len(scores) == len(sequence.sequence),
+                "aligned_to_sequence_artifact_input": (
+                    len(scores) == artifact_generation["input_sequence_length"]
+                ),
                 "summary": _score_summary(scores),
             }
             files.append(
                 {
                     "path": "pseq2sites/scores.json",
                     "format": "JSON object",
-                    "description": "sequence_id, sequence, and a scores array aligned one value per residue.",
+                    "description": "sequence_id, sequence, artifact-input metadata, and readable scores.",
                 }
             )
         except (OSError, NpyReadError) as exc:
@@ -258,6 +324,13 @@ def sequence_artifact_archive(sequence, artifact_key, path):
         "label": definition["label"],
         "sequence_id": sequence_id,
         "sequence_length": len(sequence.sequence),
+        "sequence_artifact_generation": artifact_generation,
+        "sequence_artifact_input_was_truncated": artifact_generation[
+            "input_sequence_was_truncated"
+        ],
+        "sequence_artifact_input_strategy": artifact_generation["input_strategy"],
+        "sequence_artifact_input_length": artifact_generation["input_sequence_length"],
+        "sequence_artifact_input_sha256": artifact_generation["input_sequence_sha256"],
         "array_kind": definition["array_kind"],
         "array_file": array_path,
         "array_format": "NumPy .npy",
@@ -292,12 +365,17 @@ def sequence_artifact_readme(manifest):
         "array_file: %(array_file)s\n"
         "array_format: NumPy .npy\n"
         "sequence_metadata: sequence.json\n"
+        "truncated_artifact_input: %(sequence_artifact_input_was_truncated)s\n"
+        "artifact_input_strategy: %(sequence_artifact_input_strategy)s\n"
+        "artifact_input_length: %(sequence_artifact_input_length)s\n"
+        "note: arrays are keyed by the original sequence_id; long sequences use first 512 plus last 512 residues as model input.\n"
     ) % manifest
 
 
 def sequence_artifact_payload(sequence, artifact_key):
     definition = SEQUENCE_ARTIFACT_DEFINITIONS[artifact_key]
     sequence_id = sequence.sequence_id or fallback_sequence_id(sequence.sequence)
+    generation = sequence_artifact_generation_metadata(sequence.sequence)
     path = artifact_path(sequence_id, artifact_key)
     sequence_info_root = Path(settings.SEQUENCE_INFO_ROOT).resolve()
     available = bool(path and path.exists() and path.is_file())
@@ -319,6 +397,11 @@ def sequence_artifact_payload(sequence, artifact_key):
         "source_filename": "%s.npy" % sequence_id,
         "size_bytes": path.stat().st_size if available else None,
         "relative_path": relative_path,
+        "sequence_artifact_generation": generation,
+        "sequence_artifact_input_was_truncated": generation["input_sequence_was_truncated"],
+        "sequence_artifact_input_strategy": generation["input_strategy"],
+        "sequence_artifact_input_length": generation["input_sequence_length"],
+        "sequence_artifact_input_sha256": generation["input_sequence_sha256"],
         "format_details": sequence_artifact_format_details(artifact_key),
     }
     return payload
