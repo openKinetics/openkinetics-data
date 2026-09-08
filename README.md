@@ -69,10 +69,15 @@ The Docker setup builds two images:
 
 Persistent state lives on the server and is bind-mounted into containers:
 
-- `./runtime:/data/runtime` stores the SQLite database.
-- `./releases:/data/releases` stores release files and zip downloads.
+- `${OPENKINETICS_RUNTIME_HOST_DIR:-./runtime}:/data/runtime` stores the SQLite database.
+- `${OPENKINETICS_RELEASES_HOST_DIR:-./releases}:/data/releases` stores release files and zip downloads.
 - `/home/saleh/webKinPred/media/sequence_info:/sequence_info:ro` exposes
   existing predictor sequence artifacts without copying them.
+
+`runtime/` and `releases/` are deployment state. Keep them on the server and
+out of git. For production, set `OPENKINETICS_RELEASES_HOST_DIR` to a persistent
+server directory such as `/srv/openkinetics-data/releases` if you do not want
+release outputs under the repo checkout at all.
 
 Create `.env` from `.env.example`. On production, set
 `OPENKINETICS_FRONTEND_BIND=10.1.2.12:8082`, then run:
@@ -86,6 +91,18 @@ docker compose run --rm backend python scripts/build_sequence_artifact_bundles.p
 docker compose run --rm backend python backend/manage.py import_demo_release
 docker compose up -d
 ```
+
+For a full release JSON, the preferred production command is:
+
+```bash
+scripts/publish_release_from_json.sh /path/to/openkinetics_release.json
+```
+
+The script builds release files under `./releases`, generates missing sequence
+artifacts through the GPU service, imports the release as latest, and restarts
+the website. If `OPENKINETICS_RELEASES_HOST_DIR` is set, the script writes there
+instead. Set `GPU_EMBED_SERVICE_URL` and `GPU_EMBED_SERVICE_TOKEN` in the
+environment or pass `--gpu-service-url` and `--gpu-service-token`.
 
 The frontend container serves the React app, proxies `/api/`, `/admin/`, and
 `/sequence-artifacts/` to Django, and serves `/releases/` from the mounted

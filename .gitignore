@@ -18,7 +18,7 @@ frontend/.DS_Store
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/.env.local
-releases/*/downloads/*.zip
-releases/*/checksums.sha256
-releases/*/artifact_reports/
-releases/**/*.gz
+
+# Release outputs are persisted on the server via the ./releases bind mount.
+# They are generated deployment artifacts, not source-controlled files.
+releases/

@@ -7,9 +7,9 @@ services:
       - .env
     volumes:
       - ./data:/app/data:ro
-      - ./runtime:/data/runtime
-      - ./releases:/data/releases
-      - /home/saleh/webKinPred/media/sequence_info:/sequence_info:ro
+      - ${OPENKINETICS_RUNTIME_HOST_DIR:-./runtime}:/data/runtime
+      - ${OPENKINETICS_RELEASES_HOST_DIR:-./releases}:/data/releases
+      - ${OPENKINETICS_SEQUENCE_INFO_HOST_DIR:-/home/saleh/webKinPred/media/sequence_info}:/sequence_info:ro
     expose:
       - "8010"
     restart: unless-stopped
@@ -23,5 +23,5 @@ services:
     ports:
       - "${OPENKINETICS_FRONTEND_BIND:-8082}:80"
     volumes:
-      - ./releases:/srv/openkinetics/releases:ro
+      - ${OPENKINETICS_RELEASES_HOST_DIR:-./releases}:/srv/openkinetics/releases:ro
     restart: unless-stopped
