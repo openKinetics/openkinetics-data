@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import concurrent.futures
 import csv
 import gzip
 import hashlib
@@ -27,22 +26,18 @@ import importlib.util
 import json
 import os
 import pickle
-import queue
-import shutil
 import shlex
-import socket
 import sqlite3
 import struct
 import subprocess
 import sys
 import tempfile
-import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -71,7 +66,7 @@ DEFAULT_GPU_WORKER_SCRIPT = Path(
     )
 )
 
-MODEL_ORDER = ("prot_t5", "esm2", "esmc", "pseq2sites")
+MODEL_ORDER = ("prot_t5", "pseq2sites", "esm2", "esmc")
 ARTIFACT_ROOTS = {
     "prot_t5": "prot_t5_last/residue_vecs",
     "esm2": "esm2_layer_33/residue_vecs",
@@ -91,36 +86,17 @@ KINFORM_MODEL_PYTHONS = {
 BATCH_SIZE_ENVS = {
     "prot_t5": (
         "OPENKINETICS_PROT_T5_BATCH_SIZE",
-        "KINFORM_PARALLEL_STREAM_T5_BATCH_SIZE",
-        "KINFORM_PARALLEL_T5_BATCH_SIZE",
     ),
     "esm2": (
         "OPENKINETICS_ESM2_BATCH_SIZE",
-        "KINFORM_PARALLEL_STREAM_ESM2_BATCH_SIZE",
-        "KINFORM_PARALLEL_ESM2_BATCH_SIZE",
     ),
     "esmc": (
         "OPENKINETICS_ESMC_BATCH_SIZE",
-        "KINFORM_PARALLEL_STREAM_ESMC_BATCH_SIZE",
-        "KINFORM_PARALLEL_ESMC_BATCH_SIZE",
     ),
     "pseq2sites": (
         "OPENKINETICS_PSEQ2SITES_BATCH_SIZE",
-        "KINFORM_PARALLEL_PSEQ_STREAM_BATCH_SIZE",
     ),
 }
-STREAM_EVENT_MODEL_KEYS = {
-    ("t5", "prot_t5_last"): "prot_t5",
-    ("esm2", "esm2_layer_33"): "esm2",
-    ("esmc", "esmc_layer_32"): "esmc",
-}
-STREAM_HEADER_LEN_BYTES = 8
-STREAM_MAX_HEADER_BYTES = 1024 * 1024
-STREAM_MAX_PAYLOAD_BYTES = 512 * 1024 * 1024
-
-
-class StreamProtocolError(RuntimeError):
-    pass
 
 
 @dataclass(frozen=True)
@@ -141,26 +117,6 @@ class PreparedInputs:
     seq_file: Path
     id_to_seq_pkl: Path
     seq_id_to_seq_json: Path
-
-
-@dataclass
-class StreamWorkerState:
-    name: str
-    attempts: int = 0
-    process: subprocess.Popen | None = None
-    tmp_inputs_dir: Path | None = None
-    active_seq_ids: set[str] = field(default_factory=set)
-    active_seq_count: int = 0
-    started_at_monotonic: float | None = None
-    stream_done_received: bool = False
-    waiting_for_stream_done_since: float | None = None
-    pseq_batch_size: int | None = None
-
-
-@dataclass
-class _StreamServerClient:
-    sock: socket.socket
-    send_lock: threading.Lock = field(default_factory=threading.Lock)
 
 
 class LocalSeqmapDb:
@@ -569,7 +525,11 @@ def prepared_inputs(
     sequences: list[DemoSequence],
     sequence_ids: list[str] | None = None,
 ) -> Iterator[PreparedInputs]:
-    selected_ids = set(sequence_ids or [row.sequence_id for row in sequences])
+    selected_ids = (
+        set(sequence_ids)
+        if sequence_ids is not None
+        else {row.sequence_id for row in sequences}
+    )
     seq_id_to_seq = {
         row.sequence_id: sequence_artifact_input_sequence(row.sequence)
         for row in sequences
@@ -617,437 +577,6 @@ def run_command(cmd: list[str], *, env: dict[str, str], cwd: Path, dry_run: bool
     if dry_run:
         return
     subprocess.run(cmd, env=env, cwd=str(cwd), check=True)
-
-
-def env_bool(env: dict[str, str], name: str, default: bool) -> bool:
-    raw = env.get(name)
-    if raw is None:
-        return default
-    value = str(raw).strip().lower()
-    if value in {"1", "true", "yes", "on"}:
-        return True
-    if value in {"0", "false", "no", "off"}:
-        return False
-    return default
-
-
-def _safe_job_slug(raw: str | None) -> str:
-    value = "".join(
-        ch if ch.isalnum() or ch in {"-", "_"} else "_"
-        for ch in str(raw or "").strip()
-    ).strip("_")
-    return value or "openkinetics"
-
-
-def _recvn(sock: socket.socket, nbytes: int) -> bytes:
-    out = bytearray()
-    while len(out) < nbytes:
-        chunk = sock.recv(nbytes - len(out))
-        if not chunk:
-            raise EOFError("Socket closed while reading stream frame.")
-        out.extend(chunk)
-    return bytes(out)
-
-
-def stream_send_frame(sock: socket.socket, header: dict[str, Any], payload: bytes = b"") -> None:
-    header_copy = dict(header)
-    header_copy["payload_nbytes"] = int(len(payload))
-    header_bytes = json.dumps(
-        header_copy,
-        separators=(",", ":"),
-        sort_keys=False,
-    ).encode("utf-8")
-    sock.sendall(
-        len(header_bytes).to_bytes(STREAM_HEADER_LEN_BYTES, byteorder="big", signed=False)
-    )
-    sock.sendall(header_bytes)
-    if payload:
-        sock.sendall(payload)
-
-
-def stream_recv_frame(sock: socket.socket) -> tuple[dict[str, Any], bytes]:
-    header_len = int.from_bytes(
-        _recvn(sock, STREAM_HEADER_LEN_BYTES),
-        byteorder="big",
-        signed=False,
-    )
-    if header_len <= 0:
-        raise StreamProtocolError(f"Invalid stream header size: {header_len}")
-    if header_len > STREAM_MAX_HEADER_BYTES:
-        raise StreamProtocolError(
-            f"Stream header too large: {header_len} > {STREAM_MAX_HEADER_BYTES}"
-        )
-    try:
-        header = json.loads(_recvn(sock, header_len).decode("utf-8"))
-    except Exception as exc:
-        raise StreamProtocolError("Could not decode stream frame header.") from exc
-    if not isinstance(header, dict):
-        raise StreamProtocolError("Stream frame header must be a JSON object.")
-    payload_nbytes = int(header.get("payload_nbytes", 0))
-    if payload_nbytes < 0:
-        raise StreamProtocolError(f"Invalid stream payload size: {payload_nbytes}")
-    if payload_nbytes > STREAM_MAX_PAYLOAD_BYTES:
-        raise StreamProtocolError(
-            f"Stream payload too large: {payload_nbytes} > {STREAM_MAX_PAYLOAD_BYTES}"
-        )
-    payload = _recvn(sock, payload_nbytes) if payload_nbytes else b""
-    return header, payload
-
-
-def npy_dtype_itemsize(dtype: str) -> int:
-    normalized = str(dtype or "").strip().lower()
-    if normalized in {"float32", "<f4", "|f4", "f4"}:
-        return 4
-    raise RuntimeError(f"Unsupported streamed dtype: {dtype}")
-
-
-def npy_dtype_descr(dtype: str) -> str:
-    normalized = str(dtype or "").strip().lower()
-    if normalized in {"float32", "<f4", "|f4", "f4"}:
-        return "<f4"
-    raise RuntimeError(f"Unsupported streamed dtype: {dtype}")
-
-
-def stream_shape(header: dict[str, Any]) -> tuple[int, ...]:
-    raw_shape = header.get("shape")
-    if not isinstance(raw_shape, (list, tuple)) or not raw_shape:
-        raise RuntimeError(f"Invalid stream array shape in header: {header}")
-    shape = tuple(int(value) for value in raw_shape)
-    if any(value < 0 for value in shape):
-        raise RuntimeError(f"Invalid negative stream array shape in header: {header}")
-    return shape
-
-
-def validate_stream_payload(header: dict[str, Any], payload: bytes) -> tuple[tuple[int, ...], str]:
-    shape = stream_shape(header)
-    descr = npy_dtype_descr(str(header.get("dtype") or "float32"))
-    expected_nbytes = npy_dtype_itemsize(descr)
-    for dim in shape:
-        expected_nbytes *= dim
-    if expected_nbytes != len(payload):
-        raise RuntimeError(
-            f"Stream payload size mismatch: payload={len(payload)} expected={expected_nbytes}"
-        )
-    return shape, descr
-
-
-def save_npy_payload_atomic(
-    path: Path,
-    *,
-    shape: tuple[int, ...],
-    descr: str,
-    payload: bytes,
-) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.stem}.", suffix=".npy", dir=str(path.parent))
-    os.close(fd)
-    tmp_path = Path(tmp_name)
-    try:
-        header = {
-            "descr": npy_dtype_descr(descr),
-            "fortran_order": False,
-            "shape": tuple(int(value) for value in shape),
-        }
-        header_text = repr(header)
-        header_len = len(header_text) + 1
-        padding = (16 - ((10 + header_len) % 16)) % 16
-        header_bytes = (header_text + (" " * padding) + "\n").encode("latin1")
-        with tmp_path.open("wb") as handle:
-            handle.write(b"\x93NUMPY")
-            handle.write(bytes([1, 0]))
-            handle.write(struct.pack("<H", len(header_bytes)))
-            handle.write(header_bytes)
-            handle.write(payload)
-        os.replace(tmp_path, path)
-    finally:
-        tmp_path.unlink(missing_ok=True)
-
-
-class AsyncNpyWriter:
-    def __init__(self, max_workers: int) -> None:
-        self._pool = concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, int(max_workers)),
-            thread_name_prefix="openkinetics-npy-writer",
-        )
-        self._futures: list[concurrent.futures.Future] = []
-        self._lock = threading.Lock()
-
-    def submit(
-        self,
-        path: Path,
-        *,
-        shape: tuple[int, ...],
-        descr: str,
-        payload: bytes,
-    ) -> None:
-        payload_copy = bytes(payload)
-        future = self._pool.submit(
-            save_npy_payload_atomic,
-            path,
-            shape=shape,
-            descr=descr,
-            payload=payload_copy,
-        )
-        with self._lock:
-            self._futures.append(future)
-
-    def join(self) -> None:
-        while True:
-            with self._lock:
-                futures, self._futures = self._futures, []
-            if not futures:
-                return
-            for future in futures:
-                future.result()
-
-    def check(self) -> None:
-        with self._lock:
-            futures, self._futures = self._futures, []
-        pending: list[concurrent.futures.Future] = []
-        try:
-            for future in futures:
-                if future.done():
-                    future.result()
-                else:
-                    pending.append(future)
-        finally:
-            if pending:
-                with self._lock:
-                    self._futures.extend(pending)
-
-    def shutdown(self) -> None:
-        self.join()
-        self._pool.shutdown(wait=True)
-
-
-class StreamEventServer:
-    def __init__(self, socket_path: Path) -> None:
-        self.socket_path = socket_path
-        self.events: queue.Queue[tuple[str, int, dict[str, Any] | None, bytes | None]] = queue.Queue()
-        self._sock: socket.socket | None = None
-        self._stop = threading.Event()
-        self._lock = threading.Lock()
-        self._clients: dict[int, _StreamServerClient] = {}
-        self._client_threads: dict[int, threading.Thread] = {}
-        self._accept_thread: threading.Thread | None = None
-        self._next_client_id = 1
-
-    def start(self) -> None:
-        self.socket_path.parent.mkdir(parents=True, exist_ok=True)
-        self.socket_path.unlink(missing_ok=True)
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.bind(str(self.socket_path))
-        sock.listen(16)
-        sock.settimeout(0.2)
-        self._sock = sock
-        self._accept_thread = threading.Thread(
-            target=self._accept_loop,
-            name="openkinetics-stream-accept",
-            daemon=True,
-        )
-        self._accept_thread.start()
-
-    def _accept_loop(self) -> None:
-        assert self._sock is not None
-        while not self._stop.is_set():
-            try:
-                conn, _addr = self._sock.accept()
-            except socket.timeout:
-                continue
-            except Exception:
-                if self._stop.is_set():
-                    return
-                continue
-            conn.settimeout(None)
-            with self._lock:
-                client_id = self._next_client_id
-                self._next_client_id += 1
-                self._clients[client_id] = _StreamServerClient(sock=conn)
-            self.events.put(("connect", client_id, None, None))
-            thread = threading.Thread(
-                target=self._client_loop,
-                args=(client_id, conn),
-                name=f"openkinetics-stream-client-{client_id}",
-                daemon=True,
-            )
-            with self._lock:
-                self._client_threads[client_id] = thread
-            thread.start()
-
-    def _client_loop(self, client_id: int, conn: socket.socket) -> None:
-        try:
-            while not self._stop.is_set():
-                header, payload = stream_recv_frame(conn)
-                self.events.put(("event", client_id, header, payload))
-        except EOFError:
-            pass
-        except Exception as exc:
-            self.events.put(("error", client_id, {"error": str(exc)}, None))
-        finally:
-            self.events.put(("disconnect", client_id, None, None))
-            with self._lock:
-                client = self._clients.pop(client_id, None)
-                self._client_threads.pop(client_id, None)
-            if client is not None:
-                try:
-                    client.sock.close()
-                except Exception:
-                    pass
-
-    def send(self, client_id: int, header: dict[str, Any], payload: bytes = b"") -> None:
-        with self._lock:
-            client = self._clients.get(client_id)
-        if client is None:
-            raise RuntimeError(f"Stream client {client_id} is not connected.")
-        with client.send_lock:
-            stream_send_frame(client.sock, header, payload)
-
-    def recv_event(
-        self,
-        timeout_seconds: float,
-    ) -> tuple[str, int, dict[str, Any] | None, bytes | None] | None:
-        try:
-            return self.events.get(timeout=max(0.0, timeout_seconds))
-        except queue.Empty:
-            return None
-
-    def drain_events(
-        self,
-        *,
-        max_items: int,
-    ) -> list[tuple[str, int, dict[str, Any] | None, bytes | None]]:
-        out: list[tuple[str, int, dict[str, Any] | None, bytes | None]] = []
-        while len(out) < max_items:
-            try:
-                out.append(self.events.get_nowait())
-            except queue.Empty:
-                break
-        return out
-
-    def close(self) -> None:
-        self._stop.set()
-        if self._sock is not None:
-            try:
-                self._sock.close()
-            except Exception:
-                pass
-            self._sock = None
-        with self._lock:
-            clients = list(self._clients.values())
-            self._clients.clear()
-            threads = list(self._client_threads.values())
-            self._client_threads.clear()
-        for client in clients:
-            try:
-                client.sock.close()
-            except Exception:
-                pass
-        if self._accept_thread is not None:
-            self._accept_thread.join(timeout=1.0)
-        for thread in threads:
-            thread.join(timeout=1.0)
-        self.socket_path.unlink(missing_ok=True)
-
-
-def validate_stream_shape(
-    *,
-    model_key: str,
-    row: DemoSequence,
-    shape: tuple[int, ...],
-) -> None:
-    expected_length = sequence_artifact_input_length(row.sequence)
-    if model_key == "pseq2sites":
-        if shape != (expected_length,):
-            raise RuntimeError(
-                f"{model_key}:{row.sequence_id} streamed shape={shape} expected=({expected_length},)"
-            )
-        return
-    if len(shape) != 2 or shape[0] != expected_length:
-        raise RuntimeError(
-            f"{model_key}:{row.sequence_id} streamed shape={shape} expected first dim {expected_length}"
-        )
-
-
-def write_worker_inputs(seq_id_to_seq: dict[str, str]) -> tuple[Path, Path, Path]:
-    tmp_dir = Path(tempfile.mkdtemp(prefix="openkinetics_stream_worker_"))
-    seq_file = tmp_dir / "seq_ids.txt"
-    id_to_seq_pkl = tmp_dir / "id_to_seq.pkl"
-    seq_map_json = tmp_dir / "seq_id_to_seq.json"
-
-    with seq_file.open("w", encoding="utf-8") as handle:
-        for seq_id in seq_id_to_seq:
-            handle.write(f"{seq_id}\n")
-    with id_to_seq_pkl.open("wb") as handle:
-        pickle.dump(seq_id_to_seq, handle, protocol=4)
-    seq_map_json.write_text(json.dumps(seq_id_to_seq), encoding="utf-8")
-    return seq_file, id_to_seq_pkl, seq_map_json
-
-
-def cleanup_worker_inputs(state: StreamWorkerState) -> None:
-    if state.tmp_inputs_dir is None:
-        return
-    tmp_dir = state.tmp_inputs_dir
-    state.tmp_inputs_dir = None
-    shutil.rmtree(tmp_dir, ignore_errors=True)
-
-
-def terminate_worker(state: StreamWorkerState) -> None:
-    if state.process is None:
-        return
-    if state.process.poll() is None:
-        state.process.terminate()
-        try:
-            state.process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            state.process.kill()
-            state.process.wait(timeout=10)
-    state.process = None
-
-
-def start_stream_worker(
-    cmd: list[str],
-    env: dict[str, str],
-    *,
-    cwd: Path,
-    dry_run: bool,
-) -> subprocess.Popen | None:
-    print("+ " + shlex.join(cmd))
-    if dry_run:
-        return None
-    return subprocess.Popen(cmd, env=env, cwd=str(cwd))
-
-
-def read_npy_payload(path: Path) -> tuple[tuple[int, ...], str, bytes]:
-    with path.open("rb") as handle:
-        if handle.read(6) != b"\x93NUMPY":
-            raise ValueError("not a .npy file")
-        major, _minor = handle.read(2)
-        if major == 1:
-            header_length = struct.unpack("<H", handle.read(2))[0]
-        elif major in (2, 3):
-            header_length = struct.unpack("<I", handle.read(4))[0]
-        else:
-            raise ValueError(f"unsupported .npy version: {major}")
-        header = ast.literal_eval(handle.read(header_length).decode("latin1").strip())
-        if bool(header.get("fortran_order")):
-            raise ValueError("Fortran-ordered .npy arrays are not supported")
-        shape = tuple(int(value) for value in header.get("shape") or ())
-        descr = npy_dtype_descr(str(header.get("descr") or ""))
-        payload = handle.read()
-    expected_nbytes = npy_dtype_itemsize(descr)
-    for dim in shape:
-        expected_nbytes *= dim
-    if len(payload) != expected_nbytes:
-        raise ValueError(f".npy payload size mismatch: payload={len(payload)} expected={expected_nbytes}")
-    return shape, descr, payload
-
-
-def pseq_retry_batch_plan(env: dict[str, str], start_batch_size: int) -> list[int]:
-    plan = [max(1, int(start_batch_size))]
-    for candidate in (4, 2, 1):
-        if candidate < plan[0] and candidate not in plan:
-            plan.append(candidate)
-    return plan
 
 
 def generate_residue_embeddings(
@@ -1191,700 +720,6 @@ get_sites(seq_map, bs_df, batch_size=batch_size, save_path=str(bs_path), return_
         run_command(cmd, env=env, cwd=webkinpred_root, dry_run=dry_run)
 
 
-def run_parallel_stream_worker(
-    *,
-    sequences: list[DemoSequence],
-    models: list[str],
-    env: dict[str, str],
-    webkinpred_root: Path,
-    media_path: Path,
-    sequence_info_root: Path,
-    batch_sizes: dict[str, int],
-    force: bool,
-    dry_run: bool,
-) -> None:
-    seq_by_id = {row.sequence_id: row for row in sequences}
-    seq_ids = [row.sequence_id for row in sequences]
-    seq_id_to_input = {
-        row.sequence_id: sequence_artifact_input_sequence(row.sequence)
-        for row in sequences
-    }
-    truncated_count = sum(
-        1
-        for row in sequences
-        if sequence_artifact_input_length(row.sequence) != row.length
-    )
-
-    stream_env = dict(env)
-    stream_env.setdefault("KINFORM_PARALLEL_MAX_GPU_WORKERS", "2")
-    stream_env.setdefault("KINFORM_PARALLEL_INCLUDE_PSEQ_IN_GPU_CAP", "1")
-    stream_env.setdefault("KINFORM_PARALLEL_ASYNC_WRITE_WORKERS", "16")
-    stream_env.setdefault("KINFORM_PARALLEL_PSEQ_SEND_QUEUE_SIZE", "256")
-    stream_env.setdefault("KINFORM_PARALLEL_PSEQ_SENDS_PER_TICK", "10000")
-    stream_env.setdefault("KINFORM_PARALLEL_STREAM_RECV_TIMEOUT_SECONDS", "0.05")
-    stream_env.setdefault("KINFORM_PARALLEL_STREAM_MAX_EVENTS_PER_TICK", "512")
-    stream_env.setdefault("KINFORM_PARALLEL_WORKER_DONE_WAIT_SECONDS", "30")
-    stream_env.setdefault("KINFORM_PARALLEL_PSEQ_STREAM_READ_EXISTING_ON_START", "0")
-    stream_env["KINFORM_STREAM_WRITE_MEAN_FILES"] = "0"
-    stream_env.setdefault("KINFORM_REQUIRE_CUDA", "1")
-
-    missing_by_model: dict[str, set[str]] = {
-        model_key: set(
-            missing_artifact_ids(
-                sequences,
-                sequence_info_root=sequence_info_root,
-                model_key=model_key,
-                force=force,
-            )
-        )
-        for model_key in models
-    }
-    for model_key in MODEL_ORDER:
-        missing_by_model.setdefault(model_key, set())
-
-    pseq_targets = set(missing_by_model["pseq2sites"]) if "pseq2sites" in models else set()
-
-    def has_valid_artifact(model_key: str, seq_id: str) -> bool:
-        row = seq_by_id[seq_id]
-        path = artifact_path(sequence_info_root, model_key, seq_id)
-        return path.exists() and artifact_shape_matches(model_key, row.sequence, path)
-
-    t5_needed_for_pseq = {
-        seq_id
-        for seq_id in pseq_targets
-        if not has_valid_artifact("prot_t5", seq_id)
-    }
-    save_targets: dict[str, set[str]] = {
-        "prot_t5": set(missing_by_model["prot_t5"]) | t5_needed_for_pseq,
-        "esm2": set(missing_by_model["esm2"]),
-        "esmc": set(missing_by_model["esmc"]),
-        "pseq2sites": set(pseq_targets),
-    }
-
-    print(
-        "openkinetics_parallel_stream_worker=1 "
-        f"sequences={len(seq_ids)} "
-        f"missing_prot_t5={len(missing_by_model['prot_t5'])} "
-        f"missing_esm2={len(missing_by_model['esm2'])} "
-        f"missing_esmc={len(missing_by_model['esmc'])} "
-        f"missing_pseq2sites={len(pseq_targets)} "
-        f"t5_dependency_for_pseq={len(t5_needed_for_pseq)} "
-        f"truncated_artifact_inputs={truncated_count}"
-    )
-
-    if not any(save_targets.values()):
-        print("openkinetics_parallel_stream: all selected artifacts already exist.")
-        return
-
-    t5_script = webkinpred_root / KINFORM_MODEL_SCRIPTS["prot_t5"]
-    prot_script = webkinpred_root / KINFORM_MODEL_SCRIPTS["esm2"]
-    pseq_stream_script = (
-        webkinpred_root
-        / "models"
-        / "KinForm"
-        / "code"
-        / "pseq2sites"
-        / "pseq2sites_stream_worker.py"
-    )
-    binding_sites_path = media_path / "pseq2sites" / "binding_sites_all.tsv"
-    job_id = _safe_job_slug(os.environ.get("GPU_EMBED_JOB_ID") or os.environ.get("JOB_ID"))
-
-    pseq_retry_plan = pseq_retry_batch_plan(stream_env, batch_sizes["pseq2sites"])
-    max_gpu_workers = max(1, env_int(stream_env, ("KINFORM_PARALLEL_MAX_GPU_WORKERS",), 2))
-    include_pseq_in_gpu_cap = env_bool(
-        stream_env,
-        "KINFORM_PARALLEL_INCLUDE_PSEQ_IN_GPU_CAP",
-        True,
-    )
-    async_write_workers = max(
-        1,
-        env_int(stream_env, ("KINFORM_PARALLEL_ASYNC_WRITE_WORKERS",), 16),
-    )
-    pseq_send_queue_size = max(
-        4,
-        env_int(stream_env, ("KINFORM_PARALLEL_PSEQ_SEND_QUEUE_SIZE",), 256),
-    )
-    pseq_sends_per_tick = max(
-        1,
-        env_int(stream_env, ("KINFORM_PARALLEL_PSEQ_SENDS_PER_TICK",), 10000),
-    )
-    stream_recv_timeout_seconds = max(
-        0.01,
-        float(stream_env.get("KINFORM_PARALLEL_STREAM_RECV_TIMEOUT_SECONDS", "0.05")),
-    )
-    max_events_per_tick = max(
-        16,
-        env_int(stream_env, ("KINFORM_PARALLEL_STREAM_MAX_EVENTS_PER_TICK",), 512),
-    )
-    worker_done_wait_seconds = max(
-        1.0,
-        float(stream_env.get("KINFORM_PARALLEL_WORKER_DONE_WAIT_SECONDS", "30")),
-    )
-
-    socket_dir = Path(
-        stream_env.get("KINFORM_PARALLEL_STREAM_SOCKET_DIR", "/tmp/webkinpred-gpu-embed/kinform")
-    ).resolve()
-    socket_path = socket_dir / f"{job_id}_{os.getpid()}_{int(time.time() * 1000) % 1000000}.sock"
-
-    workers: dict[str, StreamWorkerState] = {
-        "t5": StreamWorkerState(name="t5"),
-        "esm2": StreamWorkerState(name="esm2"),
-        "esmc": StreamWorkerState(name="esmc"),
-        "pseq2sites": StreamWorkerState(name="pseq2sites"),
-    }
-    completed: dict[str, set[str]] = {model_key: set() for model_key in MODEL_ORDER}
-    submitted_paths: set[Path] = set()
-    t5_ready_for_pseq: set[str] = set()
-    pseq_client_id: int | None = None
-    pseq_client_lock = threading.Lock()
-    sent_to_pseq: set[str] = set()
-    queued_to_pseq: set[str] = set()
-    pseq_finish_sent = False
-    pseq_send_queue: queue.Queue[tuple[str, dict[str, Any], bytes] | None] = queue.Queue(
-        maxsize=pseq_send_queue_size
-    )
-    pseq_send_results: queue.Queue[tuple[str, str, str]] = queue.Queue()
-    pseq_sender_stop = threading.Event()
-    server = StreamEventServer(socket_path)
-    async_writer = AsyncNpyWriter(max_workers=async_write_workers)
-
-    print(
-        "openkinetics_parallel_stream_config "
-        f"max_gpu_workers={max_gpu_workers} "
-        f"include_pseq_in_gpu_cap={include_pseq_in_gpu_cap} "
-        f"batch_t5={batch_sizes['prot_t5']} "
-        f"batch_esm2={batch_sizes['esm2']} "
-        f"batch_esmc={batch_sizes['esmc']} "
-        f"batch_pseq_plan={','.join(str(value) for value in pseq_retry_plan)} "
-        f"async_write_workers={async_write_workers} "
-        f"socket={socket_path}"
-    )
-
-    def selected_force_regen(model_key: str, seq_id: str) -> bool:
-        return force and seq_id in missing_by_model.get(model_key, set())
-
-    def target_done(model_key: str, seq_id: str) -> bool:
-        if seq_id in completed[model_key]:
-            return True
-        if selected_force_regen(model_key, seq_id):
-            return False
-        return has_valid_artifact(model_key, seq_id)
-
-    def remaining_targets(model_key: str) -> set[str]:
-        return {seq_id for seq_id in save_targets[model_key] if not target_done(model_key, seq_id)}
-
-    def pseq_done(seq_id: str) -> bool:
-        if seq_id in completed["pseq2sites"]:
-            return True
-        if selected_force_regen("pseq2sites", seq_id):
-            return False
-        return has_valid_artifact("pseq2sites", seq_id)
-
-    def get_pseq_client_id() -> int | None:
-        with pseq_client_lock:
-            return pseq_client_id
-
-    def set_pseq_client_id(value: int | None) -> None:
-        nonlocal pseq_client_id
-        with pseq_client_lock:
-            pseq_client_id = value
-
-    def drain_pseq_send_results() -> bool:
-        updated = False
-        while True:
-            try:
-                status, seq_id, detail = pseq_send_results.get_nowait()
-            except queue.Empty:
-                break
-            updated = True
-            queued_to_pseq.discard(seq_id)
-            if status == "sent":
-                sent_to_pseq.add(seq_id)
-            else:
-                sent_to_pseq.discard(seq_id)
-                if detail:
-                    print(f"openkinetics_parallel_stream pseq_send_retry seq_id={seq_id} reason={detail}")
-        return updated
-
-    def reset_pseq_send_state() -> None:
-        set_pseq_client_id(None)
-        sent_to_pseq.clear()
-        queued_to_pseq.clear()
-        while True:
-            try:
-                pseq_send_queue.get_nowait()
-            except queue.Empty:
-                break
-        while True:
-            try:
-                pseq_send_results.get_nowait()
-            except queue.Empty:
-                break
-
-    def pseq_sender_loop() -> None:
-        while not pseq_sender_stop.is_set():
-            try:
-                item = pseq_send_queue.get(timeout=0.2)
-            except queue.Empty:
-                continue
-            if item is None:
-                return
-            seq_id, header, payload = item
-            client_id = get_pseq_client_id()
-            if client_id is None:
-                pseq_send_results.put(("retry", seq_id, "pseq client not connected"))
-                continue
-            try:
-                server.send(client_id, header, payload)
-                pseq_send_results.put(("sent", seq_id, ""))
-            except Exception as exc:
-                pseq_send_results.put(("retry", seq_id, str(exc)))
-
-    pseq_sender_thread = threading.Thread(
-        target=pseq_sender_loop,
-        name=f"openkinetics-pseq-sender-{job_id}",
-        daemon=True,
-    )
-
-    def queue_t5_for_pseq(
-        seq_id: str,
-        stream_payload: tuple[tuple[int, ...], str, bytes] | None = None,
-    ) -> bool:
-        if seq_id not in pseq_targets or pseq_done(seq_id):
-            return False
-        if seq_id in queued_to_pseq or seq_id in sent_to_pseq:
-            return False
-        if get_pseq_client_id() is None:
-            return False
-        row = seq_by_id[seq_id]
-        if stream_payload is None:
-            path = artifact_path(sequence_info_root, "prot_t5", seq_id)
-            if not path.exists() or not artifact_shape_matches("prot_t5", row.sequence, path):
-                return False
-            shape, descr, payload = read_npy_payload(path)
-        else:
-            shape, descr, payload = stream_payload
-        validate_stream_shape(model_key="prot_t5", row=row, shape=shape)
-        header = {
-            "type": "PSEQ_RESIDUE",
-            "job_id": job_id,
-            "seq_id": seq_id,
-            "sequence": seq_id_to_input[seq_id],
-            "dtype": descr,
-            "shape": [int(value) for value in shape],
-        }
-        try:
-            pseq_send_queue.put_nowait((seq_id, header, payload))
-        except queue.Full:
-            return False
-        queued_to_pseq.add(seq_id)
-        return True
-
-    def needed_ids(worker_name: str) -> set[str]:
-        if worker_name == "t5":
-            out = set(remaining_targets("prot_t5"))
-            for seq_id in pseq_targets:
-                if pseq_done(seq_id):
-                    continue
-                if seq_id in queued_to_pseq or seq_id in sent_to_pseq:
-                    continue
-                if has_valid_artifact("prot_t5", seq_id) or seq_id in t5_ready_for_pseq:
-                    continue
-                out.add(seq_id)
-            return out
-        if worker_name in {"esm2", "esmc"}:
-            return remaining_targets(worker_name)
-        if worker_name == "pseq2sites":
-            return {seq_id for seq_id in pseq_targets if not pseq_done(seq_id)}
-        raise RuntimeError(f"Unknown stream worker: {worker_name}")
-
-    def build_worker_cmd(
-        worker_name: str,
-        seq_file: Path,
-        id_to_seq_pkl: Path,
-        seq_map_json: Path,
-        *,
-        pseq_batch_size: int | None = None,
-    ) -> list[str]:
-        common_stream = [
-            "--stream-mode",
-            "--stream-socket",
-            str(socket_path),
-            "--stream-job-id",
-            job_id,
-            "--worker-name",
-            worker_name,
-        ]
-        if worker_name == "t5":
-            return [
-                stream_env["KINFORM_T5_PATH"],
-                str(t5_script),
-                "--seq_file",
-                str(seq_file),
-                "--id_to_seq_file",
-                str(id_to_seq_pkl),
-                "--batch_size",
-                str(batch_sizes["prot_t5"]),
-                "--setting",
-                "residue+mean",
-                "--layers",
-                "None",
-                *common_stream,
-            ]
-        if worker_name == "esm2":
-            return [
-                stream_env["KINFORM_ESM_PATH"],
-                str(prot_script),
-                "--seq_file",
-                str(seq_file),
-                "--models",
-                "esm2",
-                "--layers",
-                "33",
-                "--setting",
-                "residue+mean",
-                "--id_to_seq_file",
-                str(id_to_seq_pkl),
-                "--batch_size",
-                str(batch_sizes["esm2"]),
-                *common_stream,
-            ]
-        if worker_name == "esmc":
-            return [
-                stream_env["KINFORM_ESMC_PATH"],
-                str(prot_script),
-                "--seq_file",
-                str(seq_file),
-                "--models",
-                "esmc",
-                "--layers",
-                "32",
-                "--setting",
-                "residue+mean",
-                "--id_to_seq_file",
-                str(id_to_seq_pkl),
-                "--batch_size",
-                str(batch_sizes["esmc"]),
-                *common_stream,
-            ]
-        if worker_name == "pseq2sites":
-            return [
-                stream_env["KINFORM_PSEQ2SITES_PATH"],
-                str(pseq_stream_script),
-                "--seq-id-to-seq-file",
-                str(seq_map_json),
-                "--binding-sites-path",
-                str(binding_sites_path),
-                "--batch-size",
-                str(max(1, int(pseq_batch_size or batch_sizes["pseq2sites"]))),
-                "--stream-mode",
-                "--stream-socket",
-                str(socket_path),
-                "--stream-job-id",
-                job_id,
-                "--worker-name",
-                worker_name,
-            ]
-        raise RuntimeError(f"Unknown stream worker: {worker_name}")
-
-    gpu_capped_workers = (
-        ("t5", "esm2", "esmc", "pseq2sites")
-        if include_pseq_in_gpu_cap
-        else ("t5", "esm2", "esmc")
-    )
-    launch_order = ("t5", "pseq2sites", "esm2", "esmc")
-
-    def active_gpu_workers() -> int:
-        return sum(1 for name in gpu_capped_workers if workers[name].process is not None)
-
-    def can_launch(worker_name: str) -> bool:
-        if worker_name not in gpu_capped_workers:
-            return True
-        return active_gpu_workers() < max_gpu_workers
-
-    def launch_worker(worker_name: str) -> bool:
-        state = workers[worker_name]
-        if state.process is not None or not can_launch(worker_name):
-            return False
-        run_ids = needed_ids(worker_name)
-        if not run_ids:
-            return False
-        max_attempts = len(pseq_retry_plan) if worker_name == "pseq2sites" else 2
-        if state.attempts >= max_attempts:
-            raise RuntimeError(
-                f"{worker_name} exhausted retries with remaining_seq_count={len(run_ids)}"
-            )
-        seq_subset = {seq_id: seq_id_to_input[seq_id] for seq_id in seq_ids if seq_id in run_ids}
-        seq_file, id_to_seq_pkl, seq_map_json = write_worker_inputs(seq_subset)
-        state.tmp_inputs_dir = seq_file.parent
-        pseq_batch_size = (
-            pseq_retry_plan[state.attempts] if worker_name == "pseq2sites" else None
-        )
-        cmd = build_worker_cmd(
-            worker_name,
-            seq_file,
-            id_to_seq_pkl,
-            seq_map_json,
-            pseq_batch_size=pseq_batch_size,
-        )
-        state.process = start_stream_worker(cmd, stream_env, cwd=webkinpred_root, dry_run=dry_run)
-        state.active_seq_ids = set(run_ids)
-        state.active_seq_count = len(run_ids)
-        state.started_at_monotonic = time.monotonic()
-        state.stream_done_received = False
-        state.waiting_for_stream_done_since = None
-        state.pseq_batch_size = pseq_batch_size
-        if worker_name == "pseq2sites":
-            reset_pseq_send_state()
-        state.attempts += 1
-        print(
-            "openkinetics_parallel_stream_launch "
-            f"worker={worker_name} attempt={state.attempts} seq_count={len(run_ids)}"
-            + (f" pseq_batch_size={pseq_batch_size}" if pseq_batch_size else "")
-        )
-        return True
-
-    def poll_worker(worker_name: str) -> bool:
-        state = workers[worker_name]
-        if state.process is None:
-            return False
-        rc = state.process.poll()
-        if rc is None:
-            return False
-        if rc == 0 and not state.stream_done_received:
-            now = time.monotonic()
-            if state.waiting_for_stream_done_since is None:
-                state.waiting_for_stream_done_since = now
-                return False
-            if now - state.waiting_for_stream_done_since < worker_done_wait_seconds:
-                return False
-
-        elapsed = 0.0
-        if state.started_at_monotonic is not None:
-            elapsed = max(0.0, time.monotonic() - state.started_at_monotonic)
-        print(
-            "openkinetics_parallel_stream_done "
-            f"worker={worker_name} attempt={state.attempts} "
-            f"seq_count={state.active_seq_count} elapsed_s={elapsed:.3f} rc={rc}"
-        )
-        cleanup_worker_inputs(state)
-        state.process = None
-        state.active_seq_ids = set()
-        state.active_seq_count = 0
-        state.started_at_monotonic = None
-        state.waiting_for_stream_done_since = None
-
-        remaining = needed_ids(worker_name)
-        if rc == 0 and not remaining:
-            return True
-        max_attempts = len(pseq_retry_plan) if worker_name == "pseq2sites" else 2
-        if remaining and state.attempts < max_attempts:
-            return launch_worker(worker_name)
-        if remaining:
-            preview = ", ".join(sorted(remaining)[:8])
-            raise RuntimeError(
-                f"worker={worker_name} failed to produce {len(remaining)} remaining artifacts: {preview}"
-            )
-        return True
-
-    def all_targets_done() -> bool:
-        for model_key in ("prot_t5", "esm2", "esmc"):
-            for seq_id in save_targets[model_key]:
-                if not target_done(model_key, seq_id):
-                    return False
-        for seq_id in pseq_targets:
-            if not pseq_done(seq_id):
-                return False
-        return True
-
-    if dry_run:
-        for name in launch_order:
-            launch_worker(name)
-            cleanup_worker_inputs(workers[name])
-            workers[name].process = None
-        print("openkinetics_parallel_stream: dry run stopped before launching workers.")
-        return
-
-    pseq_sender_thread.start()
-    server.start()
-    started_at = time.monotonic()
-    last_progress_at = 0.0
-
-    try:
-        for name in launch_order:
-            launch_worker(name)
-
-        while True:
-            had_activity = False
-            async_writer.check()
-            if drain_pseq_send_results():
-                had_activity = True
-
-            event = server.recv_event(timeout_seconds=stream_recv_timeout_seconds)
-            pending_events: list[tuple[str, int, dict[str, Any] | None, bytes | None]] = []
-            if event is not None:
-                pending_events.append(event)
-            pending_events.extend(
-                server.drain_events(max_items=max_events_per_tick - len(pending_events))
-            )
-
-            for kind, client_id, header, payload in pending_events:
-                had_activity = True
-                if kind == "disconnect":
-                    if get_pseq_client_id() == client_id:
-                        set_pseq_client_id(None)
-                        print(f"openkinetics_parallel_stream pseq_client_disconnected id={client_id}")
-                    continue
-                if kind == "error":
-                    print(f"openkinetics_parallel_stream client_error id={client_id} detail={header}")
-                    continue
-                if kind != "event" or header is None:
-                    continue
-
-                evt_type = str(header.get("type", "")).strip().upper()
-                if evt_type == "PSEQ_REGISTER":
-                    set_pseq_client_id(client_id)
-                    print(f"openkinetics_parallel_stream pseq_client_registered id={client_id}")
-                    continue
-                if evt_type == "WORKER_ERROR":
-                    print(
-                        "openkinetics_parallel_stream worker_error "
-                        f"worker={header.get('worker')} message={header.get('message')}"
-                    )
-                    continue
-                if evt_type == "WORKER_DONE":
-                    worker_name = str(header.get("worker", "")).strip()
-                    if worker_name in workers:
-                        workers[worker_name].stream_done_received = True
-                    continue
-                if evt_type == "RESIDUE_READY":
-                    family = str(header.get("family", "")).strip().lower()
-                    root = str(header.get("root", "")).strip()
-                    seq_id = str(header.get("seq_id", "")).strip()
-                    model_key = STREAM_EVENT_MODEL_KEYS.get((family, root))
-                    if not model_key:
-                        continue
-                    if seq_id not in seq_by_id:
-                        raise RuntimeError(f"Stream returned unknown seq_id={seq_id}")
-                    if payload is None:
-                        raise RuntimeError(f"{model_key}:{seq_id} stream event missing payload")
-                    shape, descr = validate_stream_payload(header, payload)
-                    row = seq_by_id[seq_id]
-                    validate_stream_shape(model_key=model_key, row=row, shape=shape)
-
-                    if seq_id in save_targets[model_key] and not target_done(model_key, seq_id):
-                        out_path = artifact_path(sequence_info_root, model_key, seq_id)
-                        submitted_paths.add(out_path)
-                        async_writer.submit(out_path, shape=shape, descr=descr, payload=payload)
-                        completed[model_key].add(seq_id)
-                    if model_key == "prot_t5" and seq_id in pseq_targets:
-                        t5_ready_for_pseq.add(seq_id)
-                        queue_t5_for_pseq(seq_id, (shape, descr, payload))
-                    continue
-                if evt_type == "BS_READY":
-                    seq_id = str(header.get("seq_id", "")).strip()
-                    if seq_id not in seq_by_id:
-                        raise RuntimeError(f"Pseq2Sites returned unknown seq_id={seq_id}")
-                    if payload is None:
-                        raise RuntimeError(f"pseq2sites:{seq_id} stream event missing payload")
-                    shape, descr = validate_stream_payload(header, payload)
-                    if len(shape) != 1:
-                        raise RuntimeError(f"pseq2sites:{seq_id} streamed shape={shape} expected 1D")
-                    row = seq_by_id[seq_id]
-                    validate_stream_shape(model_key="pseq2sites", row=row, shape=shape)
-                    if seq_id in pseq_targets and not pseq_done(seq_id):
-                        out_path = artifact_path(sequence_info_root, "pseq2sites", seq_id)
-                        submitted_paths.add(out_path)
-                        async_writer.submit(out_path, shape=shape, descr=descr, payload=payload)
-                        completed["pseq2sites"].add(seq_id)
-                    sent_to_pseq.add(seq_id)
-                    queued_to_pseq.discard(seq_id)
-                    continue
-
-            if get_pseq_client_id() is not None:
-                sent_this_tick = 0
-                for seq_id in sorted(pseq_targets):
-                    if pseq_done(seq_id):
-                        continue
-                    if queue_t5_for_pseq(seq_id):
-                        had_activity = True
-                        sent_this_tick += 1
-                        if sent_this_tick >= pseq_sends_per_tick:
-                            break
-
-            if all_targets_done():
-                if not pseq_finish_sent and get_pseq_client_id() is not None:
-                    try:
-                        server.send(
-                            get_pseq_client_id(),
-                            {"type": "PSEQ_FINISH", "job_id": job_id},
-                            b"",
-                        )
-                    except Exception:
-                        pass
-                    pseq_finish_sent = True
-                if all(state.process is None for state in workers.values()):
-                    break
-
-            for name in launch_order:
-                if poll_worker(name):
-                    had_activity = True
-            for name in launch_order:
-                if workers[name].process is None and launch_worker(name):
-                    had_activity = True
-
-            if all_targets_done() and not pseq_finish_sent and get_pseq_client_id() is not None:
-                try:
-                    server.send(
-                        get_pseq_client_id(),
-                        {"type": "PSEQ_FINISH", "job_id": job_id},
-                        b"",
-                    )
-                except Exception:
-                    pass
-                pseq_finish_sent = True
-
-            now = time.monotonic()
-            if now - last_progress_at >= 10.0:
-                last_progress_at = now
-                done_counts = {
-                    model_key: len(save_targets[model_key]) - len(remaining_targets(model_key))
-                    for model_key in ("prot_t5", "esm2", "esmc")
-                }
-                pseq_done_count = len([seq_id for seq_id in pseq_targets if pseq_done(seq_id)])
-                print(
-                    "openkinetics_parallel_stream_progress "
-                    f"prot_t5={done_counts['prot_t5']}/{len(save_targets['prot_t5'])} "
-                    f"esm2={done_counts['esm2']}/{len(save_targets['esm2'])} "
-                    f"esmc={done_counts['esmc']}/{len(save_targets['esmc'])} "
-                    f"pseq2sites={pseq_done_count}/{len(pseq_targets)} "
-                    f"pseq_sent={len(sent_to_pseq)} "
-                    f"pseq_queued={len(queued_to_pseq)} "
-                    f"queue_depth={pseq_send_queue.qsize()} "
-                    f"elapsed_s={now - started_at:.3f}"
-                )
-
-            if not had_activity:
-                time.sleep(0.05)
-    finally:
-        total_elapsed = max(0.0, time.monotonic() - started_at)
-        print(f"openkinetics_parallel_stream_total elapsed_s={total_elapsed:.3f}")
-        pseq_sender_stop.set()
-        try:
-            pseq_send_queue.put_nowait(None)
-        except queue.Full:
-            pass
-        if pseq_sender_thread.is_alive():
-            pseq_sender_thread.join(timeout=1.0)
-        for state in workers.values():
-            terminate_worker(state)
-            cleanup_worker_inputs(state)
-        async_writer.shutdown()
-        server.close()
-
-    print("openkinetics_parallel_stream: completed streamed generation.")
-
-
 def score_text_to_values(score_text: str) -> list[float]:
     return [float(part) for part in score_text.split(",") if part.strip()]
 
@@ -1933,6 +768,7 @@ def read_npy_shape(path: Path) -> tuple[int, ...]:
 def convert_pseq2sites_scores(
     *,
     sequences: list[DemoSequence],
+    sequence_ids: list[str] | None = None,
     media_path: Path,
     sequence_info_root: Path,
     force: bool,
@@ -1940,7 +776,13 @@ def convert_pseq2sites_scores(
 ) -> None:
     binding_sites_path = media_path / "pseq2sites" / "binding_sites_all.tsv"
     rows = read_binding_site_rows(binding_sites_path)
-    missing_rows = [row.sequence_id for row in sequences if row.sequence_id not in rows]
+    selected_ids = (
+        set(sequence_ids)
+        if sequence_ids is not None
+        else {row.sequence_id for row in sequences}
+    )
+    selected_sequences = [row for row in sequences if row.sequence_id in selected_ids]
+    missing_rows = [row.sequence_id for row in selected_sequences if row.sequence_id not in rows]
     if missing_rows:
         preview = ", ".join(missing_rows[:8])
         raise SystemExit(
@@ -1950,9 +792,13 @@ def convert_pseq2sites_scores(
 
     wrote = 0
     skipped = 0
-    for row in sequences:
+    for row in selected_sequences:
         out_path = artifact_path(sequence_info_root, "pseq2sites", row.sequence_id)
-        if out_path.exists() and not force:
+        if (
+            out_path.exists()
+            and not force
+            and artifact_shape_matches("pseq2sites", row.sequence, out_path)
+        ):
             skipped += 1
             continue
         values = score_text_to_values(rows[row.sequence_id])
@@ -2261,10 +1107,10 @@ def run_worker_mode(args: argparse.Namespace) -> int:
     env = build_kinform_env(webkinpred_root, media_path, tools_path)
     models = selected_models(args)
     batch_sizes = {
-        "prot_t5": args.prot_t5_batch_size or env_int(env, BATCH_SIZE_ENVS["prot_t5"], 2),
-        "esm2": args.esm2_batch_size or env_int(env, BATCH_SIZE_ENVS["esm2"], 2),
-        "esmc": args.esmc_batch_size or env_int(env, BATCH_SIZE_ENVS["esmc"], 2),
-        "pseq2sites": args.pseq2sites_batch_size or env_int(env, BATCH_SIZE_ENVS["pseq2sites"], 16),
+        "prot_t5": args.prot_t5_batch_size or env_int(env, BATCH_SIZE_ENVS["prot_t5"], 1),
+        "esm2": args.esm2_batch_size or env_int(env, BATCH_SIZE_ENVS["esm2"], 1),
+        "esmc": args.esmc_batch_size or env_int(env, BATCH_SIZE_ENVS["esmc"], 1),
+        "pseq2sites": args.pseq2sites_batch_size or env_int(env, BATCH_SIZE_ENVS["pseq2sites"], 4),
     }
 
     print(f"worker_mode=1 unique_sequences={len(sequences)} media_path={media_path}")
@@ -2276,29 +1122,7 @@ def run_worker_mode(args: argparse.Namespace) -> int:
         validate_artifacts(sequences=sequences, sequence_info_root=sequence_info_root, models=models)
         return 0
 
-    if not args.sequential_worker:
-        run_parallel_stream_worker(
-            sequences=sequences,
-            models=models,
-            env=env,
-            webkinpred_root=webkinpred_root,
-            media_path=media_path,
-            sequence_info_root=sequence_info_root,
-            batch_sizes=batch_sizes,
-            force=args.force,
-            dry_run=args.dry_run,
-        )
-        if not args.skip_validation and not args.dry_run:
-            validate_artifacts(
-                sequences=sequences,
-                sequence_info_root=sequence_info_root,
-                models=models,
-            )
-        return 0
-
-    for model_key in models:
-        if model_key == "pseq2sites":
-            continue
+    def generate_missing_residue_step(model_key: str) -> None:
         sequence_ids = missing_artifact_ids(
             sequences,
             sequence_info_root=sequence_info_root,
@@ -2315,13 +1139,30 @@ def run_worker_mode(args: argparse.Namespace) -> int:
             batch_size=batch_sizes[model_key],
         )
 
+    if "prot_t5" in models:
+        generate_missing_residue_step("prot_t5")
+
     if "pseq2sites" in models:
+        missing_pseq_artifact_ids = missing_artifact_ids(
+            sequences,
+            sequence_info_root=sequence_info_root,
+            model_key="pseq2sites",
+            force=args.force,
+        )
+        pseq_sequences = [
+            row for row in sequences if row.sequence_id in set(missing_pseq_artifact_ids)
+        ]
         binding_sites_path = media_path / "pseq2sites" / "binding_sites_all.tsv"
         existing_rows = read_binding_site_rows(binding_sites_path)
         missing_tsv_ids = pseq2sites_tsv_ids_needing_scores(
-            sequences,
+            pseq_sequences,
             existing_rows,
             force=args.force,
+        )
+        print(
+            "pseq2sites: "
+            f"missing_score_arrays={len(missing_pseq_artifact_ids)} "
+            f"missing_or_invalid_tsv_rows={len(missing_tsv_ids)}"
         )
         run_pseq2sites(
             sequences=sequences,
@@ -2334,6 +1175,7 @@ def run_worker_mode(args: argparse.Namespace) -> int:
         if not args.dry_run:
             convert_pseq2sites_scores(
                 sequences=sequences,
+                sequence_ids=missing_pseq_artifact_ids,
                 media_path=media_path,
                 sequence_info_root=sequence_info_root,
                 force=args.force,
@@ -2341,6 +1183,12 @@ def run_worker_mode(args: argparse.Namespace) -> int:
             )
         else:
             print("pseq2sites: dry run skipped TSV-to-npy conversion.")
+
+    if "esm2" in models:
+        generate_missing_residue_step("esm2")
+
+    if "esmc" in models:
+        generate_missing_residue_step("esmc")
 
     if not args.skip_validation and not args.dry_run:
         validate_artifacts(sequences=sequences, sequence_info_root=sequence_info_root, models=models)
@@ -2486,11 +1334,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-validation", action="store_true")
     parser.add_argument("--skip-release-bundles", action="store_true")
     parser.add_argument("--worker-mode", action="store_true")
-    parser.add_argument(
-        "--sequential-worker",
-        action="store_true",
-        help="Use the legacy sequential GPU worker instead of the parallel stream worker.",
-    )
     parser.add_argument(
         "--seq-id-to-seq-file",
         default="",
