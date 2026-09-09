@@ -588,10 +588,25 @@ def generate_residue_embeddings(
     webkinpred_root: Path,
     dry_run: bool,
     batch_size: int,
+    force: bool,
 ) -> None:
     if not sequence_ids:
         print(f"{model_key}: all residue arrays already exist.")
         return
+
+    sequence_by_id = {row.sequence_id: row for row in sequences}
+    for sequence_id in sequence_ids:
+        row = sequence_by_id.get(sequence_id)
+        if row is None:
+            continue
+        path = artifact_path(Path(env["KINFORM_MEDIA_PATH"]) / "sequence_info", model_key, sequence_id)
+        if not path.exists():
+            continue
+        if force or not artifact_shape_matches(model_key, row.sequence, path):
+            action = "would remove" if dry_run else "removing"
+            print(f"{model_key}: {action} stale artifact {path}")
+            if not dry_run:
+                path.unlink()
 
     script = webkinpred_root / KINFORM_MODEL_SCRIPTS[model_key]
     python_path = env[KINFORM_MODEL_PYTHONS[model_key]]
@@ -1137,6 +1152,7 @@ def run_worker_mode(args: argparse.Namespace) -> int:
             webkinpred_root=webkinpred_root,
             dry_run=args.dry_run,
             batch_size=batch_sizes[model_key],
+            force=args.force,
         )
 
     if "prot_t5" in models:
@@ -1152,6 +1168,30 @@ def run_worker_mode(args: argparse.Namespace) -> int:
         pseq_sequences = [
             row for row in sequences if row.sequence_id in set(missing_pseq_artifact_ids)
         ]
+        if "prot_t5" not in models:
+            missing_t5_dependency_ids = missing_artifact_ids(
+                pseq_sequences,
+                sequence_info_root=sequence_info_root,
+                model_key="prot_t5",
+                force=False,
+            )
+        else:
+            missing_t5_dependency_ids = []
+        if missing_t5_dependency_ids:
+            print(
+                "pseq2sites: generating "
+                f"{len(missing_t5_dependency_ids)} missing ProtT5 dependency arrays."
+            )
+            generate_residue_embeddings(
+                model_key="prot_t5",
+                sequence_ids=missing_t5_dependency_ids,
+                sequences=sequences,
+                env=env,
+                webkinpred_root=webkinpred_root,
+                dry_run=args.dry_run,
+                batch_size=batch_sizes["prot_t5"],
+                force=False,
+            )
         binding_sites_path = media_path / "pseq2sites" / "binding_sites_all.tsv"
         existing_rows = read_binding_site_rows(binding_sites_path)
         missing_tsv_ids = pseq2sites_tsv_ids_needing_scores(
