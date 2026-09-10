@@ -67,6 +67,12 @@ DEFAULT_GPU_WORKER_SCRIPT = Path(
 )
 
 MODEL_ORDER = ("prot_t5", "pseq2sites", "esm2", "esmc")
+DEFAULT_BATCH_SIZES = {
+    "prot_t5": 1,
+    "esm2": 1,
+    "esmc": 1,
+    "pseq2sites": 1,
+}
 ARTIFACT_ROOTS = {
     "prot_t5": "prot_t5_last/residue_vecs",
     "esm2": "esm2_layer_33/residue_vecs",
@@ -1090,6 +1096,26 @@ def selected_models(args: argparse.Namespace) -> list[str]:
     return [model for model in MODEL_ORDER if model in requested]
 
 
+def worker_batch_sizes(args: argparse.Namespace, env: dict[str, str]) -> dict[str, int]:
+    batch_sizes = {
+        "prot_t5": args.prot_t5_batch_size
+        or env_int(env, BATCH_SIZE_ENVS["prot_t5"], DEFAULT_BATCH_SIZES["prot_t5"]),
+        "esm2": args.esm2_batch_size
+        or env_int(env, BATCH_SIZE_ENVS["esm2"], DEFAULT_BATCH_SIZES["esm2"]),
+        "esmc": args.esmc_batch_size
+        or env_int(env, BATCH_SIZE_ENVS["esmc"], DEFAULT_BATCH_SIZES["esmc"]),
+        "pseq2sites": args.pseq2sites_batch_size
+        or env_int(env, BATCH_SIZE_ENVS["pseq2sites"], DEFAULT_BATCH_SIZES["pseq2sites"]),
+    }
+    if batch_sizes["pseq2sites"] != 1:
+        print(
+            "pseq2sites: forcing batch_size=1 "
+            f"(requested {batch_sizes['pseq2sites']}) for variable-length prediction safety."
+        )
+        batch_sizes["pseq2sites"] = 1
+    return batch_sizes
+
+
 def run_worker_mode(args: argparse.Namespace) -> int:
     if args.seq_id_to_seq_file:
         sequences = load_sequences_from_worker_file(repo_path(args.seq_id_to_seq_file))
@@ -1121,16 +1147,16 @@ def run_worker_mode(args: argparse.Namespace) -> int:
     sequence_info_root = media_path / "sequence_info"
     env = build_kinform_env(webkinpred_root, media_path, tools_path)
     models = selected_models(args)
-    batch_sizes = {
-        "prot_t5": args.prot_t5_batch_size or env_int(env, BATCH_SIZE_ENVS["prot_t5"], 1),
-        "esm2": args.esm2_batch_size or env_int(env, BATCH_SIZE_ENVS["esm2"], 1),
-        "esmc": args.esmc_batch_size or env_int(env, BATCH_SIZE_ENVS["esmc"], 1),
-        "pseq2sites": args.pseq2sites_batch_size or env_int(env, BATCH_SIZE_ENVS["pseq2sites"], 4),
-    }
+    batch_sizes = worker_batch_sizes(args, env)
 
     print(f"worker_mode=1 unique_sequences={len(sequences)} media_path={media_path}")
+    print(f"openkinetics_sequential_worker=1 order={','.join(models)}")
     print(f"sequence_info_root={sequence_info_root}")
     print(f"models={','.join(models)}")
+    print(
+        "batch_sizes "
+        + " ".join(f"{model_key}={batch_sizes[model_key]}" for model_key in models)
+    )
     for model_key in models:
         print(f"{model_key}_artifact_root={sequence_info_root / ARTIFACT_ROOTS[model_key]}")
     if args.validate_only:
@@ -1168,19 +1194,26 @@ def run_worker_mode(args: argparse.Namespace) -> int:
         pseq_sequences = [
             row for row in sequences if row.sequence_id in set(missing_pseq_artifact_ids)
         ]
-        if "prot_t5" not in models:
-            missing_t5_dependency_ids = missing_artifact_ids(
-                pseq_sequences,
-                sequence_info_root=sequence_info_root,
-                model_key="prot_t5",
-                force=False,
-            )
-        else:
-            missing_t5_dependency_ids = []
+        binding_sites_path = media_path / "pseq2sites" / "binding_sites_all.tsv"
+        existing_rows = read_binding_site_rows(binding_sites_path)
+        missing_tsv_ids = pseq2sites_tsv_ids_needing_scores(
+            pseq_sequences,
+            existing_rows,
+            force=args.force,
+        )
+        pseq_tsv_sequences = [
+            row for row in sequences if row.sequence_id in set(missing_tsv_ids)
+        ]
+        missing_t5_dependency_ids = missing_artifact_ids(
+            pseq_tsv_sequences,
+            sequence_info_root=sequence_info_root,
+            model_key="prot_t5",
+            force=False,
+        )
         if missing_t5_dependency_ids:
             print(
                 "pseq2sites: generating "
-                f"{len(missing_t5_dependency_ids)} missing ProtT5 dependency arrays."
+                f"{len(missing_t5_dependency_ids)} missing/stale ProtT5 dependency arrays."
             )
             generate_residue_embeddings(
                 model_key="prot_t5",
@@ -1192,13 +1225,19 @@ def run_worker_mode(args: argparse.Namespace) -> int:
                 batch_size=batch_sizes["prot_t5"],
                 force=False,
             )
-        binding_sites_path = media_path / "pseq2sites" / "binding_sites_all.tsv"
-        existing_rows = read_binding_site_rows(binding_sites_path)
-        missing_tsv_ids = pseq2sites_tsv_ids_needing_scores(
-            pseq_sequences,
-            existing_rows,
-            force=args.force,
-        )
+            remaining_t5_dependency_ids = missing_artifact_ids(
+                pseq_tsv_sequences,
+                sequence_info_root=sequence_info_root,
+                model_key="prot_t5",
+                force=False,
+            )
+            if remaining_t5_dependency_ids and not args.dry_run:
+                preview = ", ".join(remaining_t5_dependency_ids[:8])
+                raise SystemExit(
+                    "Pseq2Sites cannot run because ProtT5 dependency arrays are "
+                    f"still missing or wrong-shaped for {len(remaining_t5_dependency_ids)} "
+                    f"sequences: {preview}"
+                )
         print(
             "pseq2sites: "
             f"missing_score_arrays={len(missing_pseq_artifact_ids)} "
@@ -1393,7 +1432,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--prot-t5-batch-size", type=positive_int, default=None)
     parser.add_argument("--esm2-batch-size", type=positive_int, default=None)
     parser.add_argument("--esmc-batch-size", type=positive_int, default=None)
-    parser.add_argument("--pseq2sites-batch-size", type=positive_int, default=None)
+    parser.add_argument(
+        "--pseq2sites-batch-size",
+        type=positive_int,
+        default=None,
+        help=(
+            "Compatibility option; OpenKinetics clamps pseq2sites prediction to "
+            "batch size 1 to avoid variable-length collation failures."
+        ),
+    )
     return parser.parse_args()
 
 
