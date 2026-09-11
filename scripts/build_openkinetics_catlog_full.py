@@ -440,11 +440,8 @@ def empty_stats():
         "rows_with_km": 0,
         "rows_with_both_kcat_and_km": 0,
         "rows_without_primary_uniprot_id": 0,
-        "rows_marked_mutant": 0,
-        "rows_with_variant_sequence": 0,
+        "mutant_rows": 0,
         "rows_with_wild_type_sequence": 0,
-        "mutant_rows_using_variant_sequence": 0,
-        "mutant_rows_without_variant_sequence": 0,
         "rows_with_truncated_artifact_input": 0,
         "sequences_with_truncated_artifact_input": set(),
         "source_db_counts": defaultdict(int),
@@ -469,13 +466,7 @@ def update_stats(stats, datapoint):
     if not valid_accession(datapoint["enzyme"].get("primary_uniprot_id")):
         stats["rows_without_primary_uniprot_id"] += 1
     if datapoint["sequence"].get("is_mutant"):
-        stats["rows_marked_mutant"] += 1
-        if datapoint["sequence"].get("assayed_sequence_source") == "variant_sequence":
-            stats["mutant_rows_using_variant_sequence"] += 1
-        else:
-            stats["mutant_rows_without_variant_sequence"] += 1
-    if datapoint["sequence"].get("variant_sequence"):
-        stats["rows_with_variant_sequence"] += 1
+        stats["mutant_rows"] += 1
     if datapoint["sequence"].get("wild_type_sequence"):
         stats["rows_with_wild_type_sequence"] += 1
     artifact_generation = datapoint["sequence"].get("sequence_artifact_generation") or {}
@@ -515,11 +506,8 @@ def serializable_stats(stats):
         "rows_with_km": stats["rows_with_km"],
         "rows_with_both_kcat_and_km": stats["rows_with_both_kcat_and_km"],
         "rows_without_primary_uniprot_id": stats["rows_without_primary_uniprot_id"],
-        "rows_marked_mutant": stats["rows_marked_mutant"],
-        "rows_with_variant_sequence": stats["rows_with_variant_sequence"],
+        "mutant_rows": stats["mutant_rows"],
         "rows_with_wild_type_sequence": stats["rows_with_wild_type_sequence"],
-        "mutant_rows_using_variant_sequence": stats["mutant_rows_using_variant_sequence"],
-        "mutant_rows_without_variant_sequence": stats["mutant_rows_without_variant_sequence"],
         "rows_with_truncated_artifact_input": stats["rows_with_truncated_artifact_input"],
         "sequences_with_truncated_artifact_input": len(stats["sequences_with_truncated_artifact_input"]),
     }

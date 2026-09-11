@@ -129,6 +129,13 @@ COUNT_BUCKETS = (
     (101, None, "101+"),
 )
 
+INTERNAL_COUNT_KEYS = {
+    "mutant_rows_using_variant_sequence",
+    "mutant_rows_without_variant_sequence",
+    "rows_marked_mutant",
+    "rows_with_variant_sequence",
+}
+
 
 def bucket_for_count(count):
     for minimum, maximum, label in COUNT_BUCKETS:
@@ -147,6 +154,24 @@ def bucketed_distribution(rows):
     ]
 
 
+def public_release_counts(counts):
+    counts = dict(counts or {})
+    if "mutant_rows" not in counts:
+        for legacy_key in (
+            "rows_marked_mutant",
+            "mutant_rows_using_variant_sequence",
+            "rows_with_variant_sequence",
+        ):
+            if legacy_key in counts:
+                counts["mutant_rows"] = counts[legacy_key]
+                break
+    return {
+        key: value
+        for key, value in counts.items()
+        if key not in INTERNAL_COUNT_KEYS
+    }
+
+
 def release_counts_from_db(measurements, release):
     return {
         "datapoints": measurements.count(),
@@ -159,6 +184,7 @@ def release_counts_from_db(measurements, release):
             kcat__isnull=False,
             km__isnull=False,
         ).count(),
+        "mutant_rows": measurements.filter(sequence__wild_type=False).count(),
     }
 
 
@@ -178,7 +204,7 @@ def release_download_stats(release):
     )
 
     return {
-        "counts": manifest.get("counts") or release_counts_from_db(measurements, release),
+        "counts": public_release_counts(manifest.get("counts") or release_counts_from_db(measurements, release)),
         "source_db_counts": manifest.get("source_db_counts") or dict(
             measurements.exclude(source_db="")
             .values_list("source_db")

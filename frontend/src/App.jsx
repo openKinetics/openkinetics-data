@@ -917,13 +917,15 @@ function DownloadsPage() {
 
 function DownloadStatsPanel({ stats, loading }) {
   const [expanded, setExpanded] = useState(false);
-  const counts = stats?.counts || {};
+  const releaseCounts = stats?.counts || {};
+  const counts = visibleReleaseCounts(releaseCounts);
+  const rejectedRows = stats?.eligibility?.rejected_rows_by_reason || {};
   const compactItems = [
     ["Datapoints", counts.datapoints],
     ["Sequences", counts.unique_sequences],
     ["Substrates", counts.unique_substrates],
     ["EC numbers", counts.unique_ec_numbers],
-    ["Mutants", counts.rows_marked_mutant],
+    ["Mutant rows", releaseCounts.mutant_rows ?? releaseCounts.rows_marked_mutant],
     ["Truncated inputs", counts.sequences_with_truncated_artifact_input]
   ];
 
@@ -951,37 +953,228 @@ function DownloadStatsPanel({ stats, loading }) {
       </div>
       {expanded ? (
         <div className="download-stats-expanded">
-          <StatsKeyValueTable title="All counts" values={counts} />
-          <StatsKeyValueTable title="Source DBs" values={stats?.source_db_counts || {}} />
-          <StatsKeyValueTable title="Verification statuses" values={stats?.verification_status_counts || {}} />
-          <StatsKeyValueTable
-            title="Rejected rows"
-            values={stats?.eligibility?.rejected_rows_by_reason || {}}
-          />
-          <DistributionTable
-            title="Enzyme datapoint distribution"
-            rows={stats?.distributions?.enzyme_datapoints || []}
-            countLabel="Enzymes"
-          />
-          <DistributionTable
-            title="Substrate datapoint distribution"
-            rows={stats?.distributions?.substrate_datapoints || []}
-            countLabel="Substrates"
-          />
-          <TopListTable
-            title="Top enzymes"
-            rows={stats?.top_enzymes || []}
-            labelKey="enzyme_name"
-            secondary={(row) => `${formatText(row.organism)} · EC ${formatText(row.ec_number)} · ${formatText(row.primary_uniprot_id)}`}
-          />
-          <TopListTable
-            title="Top substrates"
-            rows={stats?.top_substrates || []}
-            labelKey="substrate_name"
-            secondary={(row) => row.substrate_id}
-          />
+          <div className="included-stats-grid">
+            <SequenceRowSummary counts={releaseCounts} />
+            <KineticCoverageVenn counts={releaseCounts} />
+            <StatsBarChart
+              title="Verification statuses"
+              values={stats?.verification_status_counts || {}}
+              colors={{
+                corrected: "#547f73",
+                manual_review_required: "#d39b3c",
+                mathematically_inferred: "#4f78a8",
+                unverified: "#89918e",
+                verified: "#2f8a68"
+              }}
+            />
+            <StatsBarChart
+              title="Source DBs"
+              values={stats?.source_db_counts || {}}
+              colors={["#477a6b", "#4f78a8", "#bd8435", "#9a625c", "#6f7995", "#70924d"]}
+            />
+            <StatsKeyValueTable title="Included datapoint counts" values={counts} />
+            <DistributionTable
+              title="Enzyme datapoint distribution"
+              rows={stats?.distributions?.enzyme_datapoints || []}
+              countLabel="Enzymes"
+            />
+            <DistributionTable
+              title="Substrate datapoint distribution"
+              rows={stats?.distributions?.substrate_datapoints || []}
+              countLabel="Substrates"
+            />
+            <TopListTable
+              title="Top enzymes"
+              rows={stats?.top_enzymes || []}
+              labelKey="enzyme_name"
+              secondary={(row) => `${formatText(row.organism)} · EC ${formatText(row.ec_number)} · ${formatText(row.primary_uniprot_id)}`}
+            />
+            <TopListTable
+              title="Top substrates"
+              rows={stats?.top_substrates || []}
+              labelKey="substrate_name"
+              secondary={(row) => row.substrate_id}
+            />
+          </div>
+          <RejectedRowsPanel values={rejectedRows} />
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function visibleReleaseCounts(counts) {
+  const hiddenKeys = new Set([
+    "rows_with_kcat",
+    "rows_with_km",
+    "rows_with_both_kcat_and_km",
+    "mutant_rows",
+    "mutant_rows_using_variant_sequence",
+    "mutant_rows_without_variant_sequence",
+    "rows_marked_mutant",
+    "rows_with_variant_sequence",
+    "rows_with_wild_type_sequence"
+  ]);
+  return Object.fromEntries(
+    Object.entries(counts || {}).filter(([key]) => !hiddenKeys.has(key))
+  );
+}
+
+function SequenceRowSummary({ counts }) {
+  const mutantRows = counts.mutant_rows
+    ?? counts.rows_marked_mutant
+    ?? counts.mutant_rows_using_variant_sequence;
+  const wildTypeSequenceRows = counts.rows_with_wild_type_sequence;
+  if (mutantRows === undefined && wildTypeSequenceRows === undefined) return null;
+
+  return (
+    <section className="stats-subsection sequence-row-summary">
+      <h2>Sequence coverage</h2>
+      <div className="sequence-row-grid">
+        <div>
+          <span>Mutant Rows</span>
+          <strong>{formatNumber(mutantRows)}</strong>
+        </div>
+        <div>
+          <span>Rows With Wild Type Sequence</span>
+          <strong>{formatNumber(wildTypeSequenceRows)}</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function KineticCoverageVenn({ counts }) {
+  const kcat = Number(counts.rows_with_kcat) || 0;
+  const km = Number(counts.rows_with_km) || 0;
+  const both = Math.min(Number(counts.rows_with_both_kcat_and_km) || 0, kcat, km);
+  const kcatOnly = Math.max(kcat - both, 0);
+  const kmOnly = Math.max(km - both, 0);
+  const total = Number(counts.datapoints) || kcatOnly + both + kmOnly;
+  const [activeKey, setActiveKey] = useState("both");
+
+  if (!kcat && !km) return null;
+
+  const regions = {
+    kcatOnly: { label: "Kcat only", value: kcatOnly, color: "#4f927e" },
+    both: { label: "Both Kcat and Km", value: both, color: "#477f83" },
+    kmOnly: { label: "Km only", value: kmOnly, color: "#6e8fb5" }
+  };
+  const active = regions[activeKey];
+  const activeShare = total ? `${((active.value / total) * 100).toFixed(1)}% of datapoints` : "";
+
+  function regionProps(key) {
+    const region = regions[key];
+    return {
+      className: `venn-region venn-${key} ${activeKey === key ? "active" : ""}`,
+      role: "button",
+      tabIndex: 0,
+      "aria-label": `${region.label}: ${formatNumber(region.value)} rows`,
+      "aria-pressed": activeKey === key,
+      onClick: () => setActiveKey(key),
+      onFocus: () => setActiveKey(key),
+      onMouseEnter: () => setActiveKey(key),
+      onKeyDown: (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setActiveKey(key);
+        }
+      }
+    };
+  }
+
+  return (
+    <section className="stats-subsection venn-panel">
+      <div className="chart-heading">
+        <h2>Kcat and Km coverage</h2>
+        <span>{formatNumber(total)} rows</span>
+      </div>
+      <svg className="kinetic-venn" viewBox="0 0 360 180" aria-label="Kcat and Km datapoint overlap">
+        <circle cx="120" cy="90" r="84" {...regionProps("kcatOnly")} />
+        <circle cx="240" cy="90" r="84" {...regionProps("kmOnly")} />
+        <path
+          d="M 180 31.21 A 84 84 0 0 1 180 148.79 A 84 84 0 0 1 180 31.21"
+          {...regionProps("both")}
+        />
+        <g className="venn-label" aria-hidden="true">
+          <text x="93" y="84">Kcat only</text>
+          <text className="venn-value" x="93" y="106">{formatNumber(kcatOnly)}</text>
+        </g>
+        <g className="venn-label" aria-hidden="true">
+          <text x="180" y="84">Both</text>
+          <text className="venn-value" x="180" y="106">{formatNumber(both)}</text>
+        </g>
+        <g className="venn-label" aria-hidden="true">
+          <text x="267" y="84">Km only</text>
+          <text className="venn-value" x="267" y="106">{formatNumber(kmOnly)}</text>
+        </g>
+      </svg>
+      <div className="venn-detail" aria-live="polite">
+        <span className="chart-swatch" style={{ backgroundColor: active.color }} />
+        <span>{active.label}</span>
+        <strong>{formatNumber(active.value)}</strong>
+        <small>{activeShare}</small>
+      </div>
+    </section>
+  );
+}
+
+function chartLabel(key) {
+  const labels = {
+    brenda: "BRENDA",
+    oed: "OED",
+    sabio_rk: "SABIO-RK",
+    skid: "SKiD",
+    uniprot: "UniProt"
+  };
+  return labels[key] || statLabel(key);
+}
+
+function StatsBarChart({ title, values, colors }) {
+  const entries = Object.entries(values || {})
+    .map(([key, value]) => [key, Number(value) || 0])
+    .sort((left, right) => right[1] - left[1]);
+  if (!entries.length) return null;
+
+  const total = entries.reduce((sum, [, value]) => sum + value, 0);
+  const maximum = Math.max(...entries.map(([, value]) => value), 1);
+
+  return (
+    <section className="stats-subsection bar-chart-panel">
+      <div className="chart-heading">
+        <h2>{title}</h2>
+        <span>{formatNumber(total)} rows</span>
+      </div>
+      <div className="stats-bar-chart" role="list" aria-label={title}>
+        {entries.map(([key, value], index) => {
+          const label = chartLabel(key);
+          const share = total ? `${((value / total) * 100).toFixed(1)}%` : "0%";
+          return (
+            <div
+              className="stats-bar-row"
+              key={key}
+              role="listitem"
+              tabIndex={0}
+              title={`${label}: ${formatNumber(value)} rows (${share})`}
+              style={{
+                "--bar-color": Array.isArray(colors)
+                  ? colors[index % colors.length]
+                  : colors[key] || "#547f73",
+                "--bar-width": `${(value / maximum) * 100}%`
+              }}
+            >
+              <div className="stats-bar-label">
+                <span>{label}</span>
+                <strong>{formatNumber(value)}</strong>
+              </div>
+              <div className="stats-bar-track" aria-hidden="true">
+                <span />
+              </div>
+              <small>{share}</small>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -993,6 +1186,34 @@ function StatsKeyValueTable({ title, values }) {
     <section className="stats-subsection">
       <h2>{title}</h2>
       <div className="stats-kv-grid">
+        {entries.map(([key, value]) => (
+          <div key={key}>
+            <span>{statLabel(key)}</span>
+            <strong>{formatNumber(value)}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RejectedRowsPanel({ values }) {
+  const entries = Object.entries(values || {});
+  if (!entries.length) return null;
+  const total = entries.reduce((sum, [, value]) => sum + (Number(value) || 0), 0);
+  return (
+    <section className="rejected-rows-panel">
+      <div className="rejected-rows-heading">
+        <div>
+          <h2>Rejected rows</h2>
+          <p>
+            Source rows rejected before release assembly. These rows are not included in
+            the Datapoints count above.
+          </p>
+        </div>
+        <span className="status-pill">{formatNumber(total)} outside release</span>
+      </div>
+      <div className="stats-kv-grid rejected-rows-grid">
         {entries.map(([key, value]) => (
           <div key={key}>
             <span>{statLabel(key)}</span>
