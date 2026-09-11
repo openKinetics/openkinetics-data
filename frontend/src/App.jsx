@@ -1106,15 +1106,15 @@ function EmbeddingCommandPanel({ artifact }) {
   const scriptName = artifact.relative_path?.split("/").pop() || `${metadata.model_key || "embeddings"}-download.sh`;
   const urlsName = metadata.urls_path?.split("/").pop() || `${metadata.model_key || "embeddings"}.urls.txt`;
   const scriptCommand = [
-    `curl -fL --retry 5 -o ${scriptName} "${scriptUrl}"`,
+    `curl -fL --retry 5 --retry-all-errors --connect-timeout 10 --max-time 60 -o ${scriptName} "${scriptUrl}"`,
     `chmod +x ${scriptName}`,
     `OPENKINETICS_API_BASE_URL="${apiBaseUrl}" ./${scriptName}`
   ].join("\n");
   const ariaCommand = urlsUrl
     ? [
-        `curl -fL --retry 5 -o ${urlsName} "${urlsUrl}"`,
+        `curl -fL --retry 5 --retry-all-errors --connect-timeout 10 --max-time 60 -o ${urlsName} "${urlsUrl}"`,
         `mkdir -p ${localFolder}`,
-        `aria2c -c -x 4 -s 4 -d ${localFolder} -i ${urlsName}`
+        `aria2c -c -x 4 -s 4 --max-tries=5 --retry-wait=5 --timeout=30 --lowest-speed-limit=1K --auto-file-renaming=false --allow-overwrite=true -d ${localFolder} -i ${urlsName}`
       ].join("\n")
     : "";
 

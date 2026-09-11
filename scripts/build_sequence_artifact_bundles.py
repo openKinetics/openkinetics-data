@@ -318,14 +318,34 @@ def write_embedding_download_helpers(release_dir, release_id, public_api_base_ur
         handle.write("set -euo pipefail\n\n")
         handle.write('BASE_URL="${OPENKINETICS_API_BASE_URL:-%s}"\n' % public_api_base_url.rstrip("/"))
         handle.write('OUT_DIR="${1:-%s}"\n' % local_folder)
+        handle.write('CONNECT_TIMEOUT="${OPENKINETICS_CONNECT_TIMEOUT:-10}"\n')
+        handle.write('SPEED_TIME="${OPENKINETICS_SPEED_TIME:-30}"\n')
+        handle.write('SPEED_LIMIT="${OPENKINETICS_SPEED_LIMIT:-1024}"\n')
+        handle.write('MAX_TIME="${OPENKINETICS_MAX_TIME:-300}"\n')
         handle.write('mkdir -p "$OUT_DIR"\n\n')
+        handle.write('file_size() { wc -c < "$1" | tr -d " "; }\n\n')
+        handle.write('download_one() {\n')
+        handle.write('  local sequence_id="$1"\n')
+        handle.write('  local expected_size="$2"\n')
+        handle.write('  local out="$OUT_DIR/$sequence_id.npy"\n')
+        handle.write('  if [ -f "$out" ] && [ "$(file_size "$out")" = "$expected_size" ]; then\n')
+        handle.write('    echo "skip $sequence_id"\n')
+        handle.write('    return 0\n')
+        handle.write('  fi\n')
+        handle.write('  curl -fL --retry 5 --retry-all-errors --connect-timeout "$CONNECT_TIMEOUT" --speed-time "$SPEED_TIME" --speed-limit "$SPEED_LIMIT" --max-time "$MAX_TIME" -C - --create-dirs -o "$out" "$BASE_URL/artifacts/%s/$sequence_id.npy"\n' % raw_artifact_key)
+        handle.write('  if [ "$(file_size "$out")" != "$expected_size" ]; then\n')
+        handle.write('    echo "size mismatch for $sequence_id: got $(file_size "$out"), expected $expected_size" >&2\n')
+        handle.write('    return 1\n')
+        handle.write('  fi\n')
+        handle.write('}\n\n')
         handle.write('echo "Downloading %s %s residue embeddings to $OUT_DIR"\n' % (release_id, model_key))
         for item in found:
             sequence_id = item["sequence_id"]
-            handle.write(
-                'curl -fL --retry 5 -C - --create-dirs -o "$OUT_DIR/%s.npy" "$BASE_URL/artifacts/%s/%s.npy"\n'
-                % (sequence_id, raw_artifact_key, sequence_id)
-            )
+            handle.write('download_one "%s" "%s"\n' % (sequence_id, item.get("size_bytes") or ""))
+        handle.write(
+            'find "$OUT_DIR" -maxdepth 1 -name "*.npy" -type f | wc -l | '
+            'awk \'{print "Downloaded files:", $1}\'\n'
+        )
         handle.write('echo "Done."\n')
     script_path.chmod(0o755)
 
