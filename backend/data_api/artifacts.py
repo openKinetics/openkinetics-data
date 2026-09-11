@@ -156,29 +156,33 @@ def split_details(path):
     )
 
 
-def embedding_bundle_details(model_key, array_path):
+def embedding_command_details(model_key, array_path):
     return details(
-        "ZIP archive containing sequence metadata and all available %s residue embedding arrays." % model_key,
+        "Command-based bulk download for all available %s residue embedding arrays." % model_key,
         [
-            file_detail("README.txt", "UTF-8 text", "Plain-language archive summary."),
-            file_detail("manifest.json", "JSON object", "Archive counts, model key, source root, join key, and file layout."),
             file_detail(
-                "metadata/sequences.jsonl",
-                "JSON Lines",
-                "One row per release sequence, including the full amino-acid sequence and artifact availability.",
+                "artifact_indexes/{artifact_key}.jsonl.gz",
+                "Gzip-compressed JSON Lines",
+                "One row per available array with sequence_id, local path, raw download URL, size, dtype, shape, and sequence metadata.",
             ),
             file_detail(
-                "metadata/artifacts.jsonl",
-                "JSON Lines",
-                "One row per available array, including sequence, artifact path, dtype, shape, size, and checksum.",
+                "downloads/{release_id}-{model_key}-download.sh",
+                "Shell script",
+                "Resumable curl commands that download raw .npy arrays into an openkinetics_embeddings folder.",
             ),
-            file_detail(array_path, "NumPy .npy array", "Full per-residue embedding matrix for one sequence."),
+            file_detail(
+                "downloads/{release_id}-{model_key}.urls.txt",
+                "Plain text",
+                "One raw .npy URL per line for aria2c or other parallel download tools.",
+            ),
+            file_detail(array_path, "NumPy .npy array", "Downloaded per-residue embedding matrix for one sequence."),
         ],
         SEQUENCE_ARTIFACT_INDEX_FIELDS,
         [
             "Use sequence_id to join rows to measurements.csv.gz and sequences.jsonl.gz.",
             "For sequences up to 1024 residues, each .npy matrix is aligned to the full sequence by residue order.",
             "For sequences longer than 1024 residues, embeddings are generated from the first 512 and last 512 residues, saved under the original sequence_id, and marked by sequence_artifact_input_was_truncated.",
+            "Bulk embedding files are not pre-zipped in the release folder; copy the generated commands to download raw .npy files from the mounted artifact store.",
         ],
     )
 
@@ -297,15 +301,15 @@ FORMAT_DETAILS = {
     "split_sequence_exclusive": split_details("splits/sequence_exclusive.csv"),
     "split_substrate_exclusive": split_details("splits/substrate_exclusive.csv"),
     "split_pair_exclusive": split_details("splits/pair_exclusive.csv"),
-    "embedding_esm2": embedding_bundle_details(
+    "embedding_esm2": embedding_command_details(
         "ESM2",
         "embeddings/esm2/residue_vecs/{sequence_id}.npy",
     ),
-    "embedding_esmc": embedding_bundle_details(
+    "embedding_esmc": embedding_command_details(
         "ESMC",
         "embeddings/esmc/residue_vecs/{sequence_id}.npy",
     ),
-    "embedding_prot_t5": embedding_bundle_details(
+    "embedding_prot_t5": embedding_command_details(
         "ProtT5",
         "embeddings/prot_t5/residue_vecs/{sequence_id}.npy",
     ),
@@ -331,33 +335,13 @@ FORMAT_DETAILS = {
             file_detail("splits/*.csv", "CSV", "Random, sequence-exclusive, substrate-exclusive, and pair-exclusive splits."),
         ],
     ),
-    "bundle_embeddings": details(
-        "ZIP archive containing the available ESM2, ESMC, and ProtT5 embedding bundle ZIPs.",
-        [
-            file_detail(
-                "downloads/openkinetics-demo-*-residue-vecs.zip",
-                "ZIP archives",
-                "Child embedding bundles, each with sequence metadata and raw .npy matrices.",
-            )
-        ],
-    ),
-    "bundle_pseq2sites": details(
-        "ZIP archive containing the available Pseq2Sites score bundle ZIP.",
-        [
-            file_detail(
-                "downloads/openkinetics-demo-pseq2sites-scores.zip",
-                "ZIP archive",
-                "Child score bundle with sequence metadata, raw .npy vectors, and scores.jsonl.gz.",
-            )
-        ],
-    ),
     "bundle_complete": details(
-        "ZIP archive containing the generated child bundles for the release.",
+        "ZIP archive containing release metadata and tabular data files, excluding bulk embeddings.",
         [
             file_detail(
-                "downloads/openkinetics-demo-*.zip",
-                "ZIP archives",
-                "Measurement, ML-ready, embedding, and Pseq2Sites child bundles when those files are available.",
+                "manifest.json, measurements, sequences, substrates, and splits",
+                "Mixed release files",
+                "Metadata and ML-ready tabular files; embeddings are downloaded separately with generated commands.",
             )
         ],
     ),
@@ -464,29 +448,53 @@ ARTIFACT_DEFINITIONS = [
     {
         "artifact_key": "embedding_esm2",
         "family": "embeddings",
-        "label": "ESM2 residue embeddings bundle",
-        "description": "Zip bundle of ESM2 matrices plus sequence metadata for every included sequence.",
-        "relative_path": "downloads/openkinetics-demo-esm2-residue-vecs.zip",
-        "content_type": "application/zip",
-        "metadata": {"model_key": "esm2", "download_mode": "zip_bundle", "feature_kind": "residue_vecs"},
+        "label": "ESM2 residue embeddings",
+        "description": "Copyable commands for downloading ESM2 .npy residue matrices into a local folder.",
+        "relative_path": "downloads/{release_id}-esm2-download.sh",
+        "content_type": "text/x-shellscript",
+        "metadata": {
+            "model_key": "esm2",
+            "raw_artifact_key": "esm2_residue",
+            "download_mode": "command_panel",
+            "feature_kind": "residue_vecs",
+            "index_path": "artifact_indexes/esm2_residue.jsonl.gz",
+            "urls_path": "downloads/{release_id}-esm2.urls.txt",
+            "local_folder": "openkinetics_embeddings/esm2/residue_vecs",
+        },
     },
     {
         "artifact_key": "embedding_esmc",
         "family": "embeddings",
-        "label": "ESMC residue embeddings bundle",
-        "description": "Zip bundle of ESMC matrices plus sequence metadata for every included sequence.",
-        "relative_path": "downloads/openkinetics-demo-esmc-residue-vecs.zip",
-        "content_type": "application/zip",
-        "metadata": {"model_key": "esmc", "download_mode": "zip_bundle", "feature_kind": "residue_vecs"},
+        "label": "ESMC residue embeddings",
+        "description": "Copyable commands for downloading ESMC .npy residue matrices into a local folder.",
+        "relative_path": "downloads/{release_id}-esmc-download.sh",
+        "content_type": "text/x-shellscript",
+        "metadata": {
+            "model_key": "esmc",
+            "raw_artifact_key": "esmc_residue",
+            "download_mode": "command_panel",
+            "feature_kind": "residue_vecs",
+            "index_path": "artifact_indexes/esmc_residue.jsonl.gz",
+            "urls_path": "downloads/{release_id}-esmc.urls.txt",
+            "local_folder": "openkinetics_embeddings/esmc/residue_vecs",
+        },
     },
     {
         "artifact_key": "embedding_prot_t5",
         "family": "embeddings",
-        "label": "ProtT5 residue embeddings bundle",
-        "description": "Zip bundle of ProtT5 matrices plus sequence metadata for every included sequence.",
-        "relative_path": "downloads/openkinetics-demo-prot-t5-residue-vecs.zip",
-        "content_type": "application/zip",
-        "metadata": {"model_key": "prot_t5", "download_mode": "zip_bundle", "feature_kind": "residue_vecs"},
+        "label": "ProtT5 residue embeddings",
+        "description": "Copyable commands for downloading ProtT5 .npy residue matrices into a local folder.",
+        "relative_path": "downloads/{release_id}-prot-t5-download.sh",
+        "content_type": "text/x-shellscript",
+        "metadata": {
+            "model_key": "prot_t5",
+            "raw_artifact_key": "prot_t5_residue",
+            "download_mode": "command_panel",
+            "feature_kind": "residue_vecs",
+            "index_path": "artifact_indexes/prot_t5_residue.jsonl.gz",
+            "urls_path": "downloads/{release_id}-prot-t5.urls.txt",
+            "local_folder": "openkinetics_embeddings/prot_t5/residue_vecs",
+        },
     },
     {
         "artifact_key": "pseq2sites_binding_sites",
@@ -514,26 +522,10 @@ ARTIFACT_DEFINITIONS = [
         "content_type": "application/zip",
     },
     {
-        "artifact_key": "bundle_embeddings",
-        "family": "bundles",
-        "label": "Embeddings bundle",
-        "description": "Zip bundle containing all available ESM2, ESMC, and ProtT5 residue embedding bundles.",
-        "relative_path": "downloads/openkinetics-demo-embeddings.zip",
-        "content_type": "application/zip",
-    },
-    {
-        "artifact_key": "bundle_pseq2sites",
-        "family": "bundles",
-        "label": "Pseq2Sites bundle",
-        "description": "Zip bundle containing all available Pseq2Sites score files.",
-        "relative_path": "downloads/openkinetics-demo-pseq2sites.zip",
-        "content_type": "application/zip",
-    },
-    {
         "artifact_key": "bundle_complete",
         "family": "bundles",
         "label": "Complete release bundle",
-        "description": "Zip bundle containing the generated child download bundles.",
+        "description": "Zip bundle containing release metadata and tabular data files. Embeddings are downloaded separately with commands.",
         "relative_path": "downloads/openkinetics-demo-complete.zip",
         "content_type": "application/zip",
     },
@@ -542,6 +534,10 @@ ARTIFACT_DEFINITIONS = [
 
 def release_dir(release_id):
     return Path(settings.RELEASES_ROOT) / release_id
+
+
+def release_path(value, release_id):
+    return (value or "").format(release_id=release_id)
 
 
 def file_sha256(path):
@@ -553,11 +549,24 @@ def file_sha256(path):
 
 
 def artifact_payload(release_id, definition):
-    rel_path = definition["relative_path"]
+    rel_path = release_path(definition["relative_path"], release_id)
     path = release_dir(release_id) / rel_path
     available = path.exists() and path.is_file()
     url_base = settings.RELEASES_URL_BASE.rstrip("/")
     metadata = dict(definition.get("metadata", {}))
+    for key in ("index_path", "urls_path", "local_folder"):
+        if key in metadata:
+            metadata[key] = release_path(metadata[key], release_id)
+    if metadata.get("index_path"):
+        index_path = release_dir(release_id) / metadata["index_path"]
+        metadata["index_url"] = "%s/%s/%s" % (url_base, release_id, metadata["index_path"])
+        metadata["index_available"] = index_path.exists() and index_path.is_file()
+        metadata["index_size_bytes"] = index_path.stat().st_size if metadata["index_available"] else None
+    if metadata.get("urls_path"):
+        urls_path = release_dir(release_id) / metadata["urls_path"]
+        metadata["urls_url"] = "%s/%s/%s" % (url_base, release_id, metadata["urls_path"])
+        metadata["urls_available"] = urls_path.exists() and urls_path.is_file()
+        metadata["urls_size_bytes"] = urls_path.stat().st_size if metadata["urls_available"] else None
     metadata["format_details"] = FORMAT_DETAILS.get(definition["artifact_key"], {})
     payload = {
         "artifact_key": definition["artifact_key"],

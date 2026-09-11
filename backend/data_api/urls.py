@@ -17,6 +17,11 @@ urlpatterns = [
         views.sequence_artifact_download,
         name="sequence-artifact-download",
     ),
+    path(
+        "artifacts/<str:artifact_key>/<str:sequence_id>.npy",
+        views.raw_embedding_artifact_download,
+        name="raw-embedding-artifact-download",
+    ),
     path("substrates/<str:substrate_id>/", views.substrate_detail, name="substrate-detail"),
     path("downloads/", views.downloads, name="downloads"),
 ]

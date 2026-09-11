@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build release zip bundles from mounted predictor sequence artifact caches."""
+"""Build release sequence artifact indexes and bundles from mounted predictor caches."""
 
 import argparse
 import gzip
@@ -21,6 +21,10 @@ from data_api.npy_utils import NpyReadError, read_npy_flat_numbers, read_npy_met
 
 DEFAULT_RELEASES_DIR = os.environ.get("OPENKINETICS_RELEASES_ROOT", "releases")
 DEFAULT_SEQUENCE_INFO_ROOT = os.environ.get("OPENKINETICS_SEQUENCE_INFO_ROOT", "/sequence_info")
+DEFAULT_PUBLIC_API_BASE_URL = os.environ.get(
+    "OPENKINETICS_PUBLIC_API_BASE_URL",
+    "http://localhost:8000/api",
+)
 SEQUENCE_METADATA_PATH = "metadata/sequences.jsonl"
 ARTIFACT_METADATA_PATH = "metadata/artifacts.jsonl"
 TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES = 512
@@ -34,6 +38,9 @@ ARTIFACT_SPECS = {
         "source_root": os.environ.get("OPENKINETICS_ESM2_RESIDUE_ROOT", "esm2_layer_33/residue_vecs"),
         "bundle": "downloads/openkinetics-demo-esm2-residue-vecs.zip",
         "bundle_prefix": "embeddings/esm2/residue_vecs",
+        "local_folder": "openkinetics_embeddings/esm2/residue_vecs",
+        "raw_artifact_key": "esm2_residue",
+        "index_path": "artifact_indexes/esm2_residue.jsonl.gz",
         "array_kind": "embedding",
         "records_path": "embeddings/esm2/index.jsonl.gz",
     },
@@ -41,6 +48,9 @@ ARTIFACT_SPECS = {
         "source_root": os.environ.get("OPENKINETICS_ESMC_RESIDUE_ROOT", "esmc_layer_32/residue_vecs"),
         "bundle": "downloads/openkinetics-demo-esmc-residue-vecs.zip",
         "bundle_prefix": "embeddings/esmc/residue_vecs",
+        "local_folder": "openkinetics_embeddings/esmc/residue_vecs",
+        "raw_artifact_key": "esmc_residue",
+        "index_path": "artifact_indexes/esmc_residue.jsonl.gz",
         "array_kind": "embedding",
         "records_path": "embeddings/esmc/index.jsonl.gz",
     },
@@ -51,6 +61,9 @@ ARTIFACT_SPECS = {
         ),
         "bundle": "downloads/openkinetics-demo-prot-t5-residue-vecs.zip",
         "bundle_prefix": "embeddings/prot_t5/residue_vecs",
+        "local_folder": "openkinetics_embeddings/prot_t5/residue_vecs",
+        "raw_artifact_key": "prot_t5_residue",
+        "index_path": "artifact_indexes/prot_t5_residue.jsonl.gz",
         "array_kind": "embedding",
         "records_path": "embeddings/prot_t5/index.jsonl.gz",
     },
@@ -98,6 +111,14 @@ def write_json(path, payload):
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2, sort_keys=True)
         handle.write("\n")
+
+
+def write_jsonl_gz(path, rows):
+    ensure_parent(path)
+    with gzip.open(path, "wt", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, sort_keys=True))
+            handle.write("\n")
 
 
 def jsonl_text(rows):
@@ -180,6 +201,18 @@ def public_record(record):
     }
 
 
+def release_file_slug(model_key):
+    return model_key.replace("_", "-")
+
+
+def raw_artifact_url(api_base_url, artifact_key, sequence_id):
+    return "%s/artifacts/%s/%s.npy" % (
+        api_base_url.rstrip("/"),
+        artifact_key,
+        sequence_id,
+    )
+
+
 def sequence_artifact_record(row, source_path, archive_path, available):
     record = {
         **public_sequence_fields(row),
@@ -244,7 +277,60 @@ def score_rows(found):
     return rows, errors
 
 
-def build_model_bundle(release_dir, sequence_info_root, model_key, spec, sequences):
+def write_embedding_download_helpers(release_dir, release_id, public_api_base_url, model_key, spec, found):
+    slug = release_file_slug(model_key)
+    raw_artifact_key = spec["raw_artifact_key"]
+    local_folder = spec["local_folder"]
+    index_path = release_dir / spec["index_path"]
+    script_path = release_dir / "downloads" / ("%s-%s-download.sh" % (release_id, slug))
+    urls_path = release_dir / "downloads" / ("%s-%s.urls.txt" % (release_id, slug))
+
+    if not found:
+        remove_stale(index_path)
+        remove_stale(script_path)
+        remove_stale(urls_path)
+        return
+
+    index_rows = []
+    urls = []
+    for item in found:
+        sequence_id = item["sequence_id"]
+        local_path = "%s/%s.npy" % (local_folder, sequence_id)
+        url = raw_artifact_url(public_api_base_url, raw_artifact_key, sequence_id)
+        urls.append(url)
+        index_rows.append(
+            {
+                **public_record(item),
+                "model_key": model_key,
+                "raw_artifact_key": raw_artifact_key,
+                "download_url": url,
+                "local_path": local_path,
+            }
+        )
+
+    write_jsonl_gz(index_path, index_rows)
+    ensure_parent(urls_path)
+    urls_path.write_text("\n".join(urls) + "\n", encoding="utf-8")
+
+    ensure_parent(script_path)
+    with open(script_path, "w", encoding="utf-8") as handle:
+        handle.write("#!/usr/bin/env bash\n")
+        handle.write("set -euo pipefail\n\n")
+        handle.write('BASE_URL="${OPENKINETICS_API_BASE_URL:-%s}"\n' % public_api_base_url.rstrip("/"))
+        handle.write('OUT_DIR="${1:-%s}"\n' % local_folder)
+        handle.write('mkdir -p "$OUT_DIR"\n\n')
+        handle.write('echo "Downloading %s %s residue embeddings to $OUT_DIR"\n' % (release_id, model_key))
+        for item in found:
+            sequence_id = item["sequence_id"]
+            handle.write(
+                'curl -fL --retry 5 -C - --create-dirs -o "$OUT_DIR/%s.npy" "$BASE_URL/artifacts/%s/%s.npy"\n'
+                % (sequence_id, raw_artifact_key, sequence_id)
+            )
+        handle.write('echo "Done."\n')
+    script_path.chmod(0o755)
+
+
+def build_model_bundle(release_dir, sequence_info_root, public_api_base_url, model_key, spec, sequences):
     source_root = (sequence_info_root / spec["source_root"]).resolve()
     bundle_path = release_dir / spec["bundle"]
     found = []
@@ -279,7 +365,11 @@ def build_model_bundle(release_dir, sequence_info_root, model_key, spec, sequenc
         "missing": len(missing),
         "missing_sequences": [public_record(row) for row in missing],
         "join_key": "sequence_id",
-        "file_format": "ZIP with JSONL metadata and NumPy .npy arrays",
+        "file_format": (
+            "JSONL index and downloader helper files"
+            if spec["array_kind"] == "embedding"
+            else "ZIP with JSONL metadata and NumPy .npy arrays"
+        ),
         "array_kind": spec["array_kind"],
         "sequence_metadata_path": SEQUENCE_METADATA_PATH,
         "artifact_metadata_path": ARTIFACT_METADATA_PATH,
@@ -298,7 +388,31 @@ def build_model_bundle(release_dir, sequence_info_root, model_key, spec, sequenc
             "flag_field": "sequence_artifact_input_was_truncated",
         },
     }
+    if spec["array_kind"] == "embedding":
+        slug = release_file_slug(model_key)
+        report.update(
+            {
+                "download_mode": "command_panel",
+                "raw_artifact_key": spec["raw_artifact_key"],
+                "index_path": spec["index_path"],
+                "download_script": "downloads/%s-%s-download.sh" % (release_dir.name, slug),
+                "url_list": "downloads/%s-%s.urls.txt" % (release_dir.name, slug),
+                "local_folder": spec["local_folder"],
+            }
+        )
     write_json(release_dir / "artifact_reports" / ("%s.json" % model_key), report)
+
+    if spec["array_kind"] == "embedding":
+        remove_stale(bundle_path)
+        write_embedding_download_helpers(
+            release_dir,
+            release_dir.name,
+            public_api_base_url,
+            model_key,
+            spec,
+            found,
+        )
+        return report
 
     if not found:
         remove_stale(bundle_path)
@@ -374,6 +488,7 @@ def main():
     parser.add_argument("--release-id", default="openkinetics-catlog-demo-2026-08")
     parser.add_argument("--releases-dir", default=DEFAULT_RELEASES_DIR)
     parser.add_argument("--sequence-info-root", default=DEFAULT_SEQUENCE_INFO_ROOT)
+    parser.add_argument("--public-api-base-url", default=DEFAULT_PUBLIC_API_BASE_URL)
     args = parser.parse_args()
 
     releases_dir = Path(args.releases_dir)
@@ -386,39 +501,21 @@ def main():
         reports[model_key] = build_model_bundle(
             release_dir,
             sequence_info_root,
+            args.public_api_base_url,
             model_key,
             spec,
             sequences,
         )
 
-    build_parent_bundle(
-        release_dir,
+    for stale_name in [
         "downloads/openkinetics-demo-embeddings.zip",
-        [
-            ARTIFACT_SPECS["esm2"]["bundle"],
-            ARTIFACT_SPECS["esmc"]["bundle"],
-            ARTIFACT_SPECS["prot_t5"]["bundle"],
-        ],
-    )
-    build_parent_bundle(
-        release_dir,
         "downloads/openkinetics-demo-pseq2sites.zip",
-        [ARTIFACT_SPECS["pseq2sites"]["bundle"]],
-    )
-    build_parent_bundle(
-        release_dir,
-        "downloads/openkinetics-demo-complete.zip",
-        [
-            "downloads/openkinetics-demo-measurements.zip",
-            "downloads/openkinetics-demo-ml-ready.zip",
-            "downloads/openkinetics-demo-embeddings.zip",
-            "downloads/openkinetics-demo-pseq2sites.zip",
-        ],
-    )
+    ]:
+        remove_stale(release_dir / stale_name)
     write_json(release_dir / "artifact_reports" / "summary.json", reports)
     write_checksums(release_dir)
 
-    print("Built mounted sequence artifact bundles in %s" % release_dir)
+    print("Built mounted sequence artifact indexes and bundles in %s" % release_dir)
     for model_key, report in reports.items():
         print("%s: found %s / %s" % (model_key, report["found"], report["total_sequences"]))
 

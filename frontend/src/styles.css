@@ -130,6 +130,17 @@ select {
   border-color: var(--accent);
 }
 
+.icon-button.subtle {
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: 12px;
+  background: #fbfcfb;
+}
+
+button.icon-button {
+  cursor: pointer;
+}
+
 .page {
   width: min(1440px, 100%);
   margin: 0 auto;
@@ -856,6 +867,11 @@ h3 {
   background: #fff;
 }
 
+.download-row-copy {
+  min-width: min(100%, 320px);
+  flex: 1 1 360px;
+}
+
 .artifact-list {
   display: grid;
   gap: 10px;
@@ -882,6 +898,62 @@ h3 {
   flex: 1 0 100%;
   border-top: 1px solid var(--line);
   padding-top: 10px;
+}
+
+.command-panel-shell {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.command-panel {
+  width: min(760px, 100%);
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.command-block {
+  min-width: 0;
+}
+
+.command-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.command-block-header strong {
+  font-size: 13px;
+}
+
+.command-block pre {
+  max-width: 100%;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #101817;
+  color: #e8f4ef;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.command-panel-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .download-details summary {
@@ -1003,6 +1075,7 @@ h3 {
   .binding-site-summary,
   .enzyme-panel-header,
   .download-stats-header,
+  .command-panel-shell,
   .download-row,
   .artifact-row {
     flex-direction: column;

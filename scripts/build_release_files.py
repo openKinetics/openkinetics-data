@@ -283,9 +283,11 @@ def main():
     enriched_manifest = dict(manifest)
     enriched_manifest["schema"] = sample.get("schema", {})
     enriched_manifest["download_note"] = (
-        "Large embeddings and Pseq2Sites artifacts are distributed as ZIP packages containing "
-        "sequence metadata plus predictor arrays keyed by sequence_id. Sequences longer than "
-        "1024 residues use the first 512 and last 512 residues as artifact model input; "
+        "Measurements, sequences, substrates, splits, and Pseq2Sites artifacts are distributed "
+        "as ordinary release files or ZIP packages. Large residue embeddings are distributed "
+        "with small JSONL indexes and generated curl/aria2 command helpers that download raw "
+        ".npy files from the mounted artifact store by sequence_id. Sequences longer than 1024 "
+        "residues use the first 512 and last 512 residues as artifact model input; "
         "sequence_artifact_generation marks those rows."
     )
     write_json(release_dir / "manifest.json", enriched_manifest)
@@ -341,7 +343,9 @@ def main():
             "sequence_metadata": "metadata/sequences.jsonl",
             "artifact_metadata": "metadata/artifacts.jsonl",
             "pseq2sites_scores": "pseq2sites/scores.jsonl.gz",
-            "embedding_index_pattern": "embeddings/{model_key}/index.jsonl.gz",
+            "embedding_index_pattern": "artifact_indexes/{artifact_key}.jsonl.gz",
+            "embedding_download_script_pattern": "downloads/{release_id}-{model_key}-download.sh",
+            "embedding_url_list_pattern": "downloads/{release_id}-{model_key}.urls.txt",
         },
         "long_sequence_artifact_input": {
             "threshold": 1024,

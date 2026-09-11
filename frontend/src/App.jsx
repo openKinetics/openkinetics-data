@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  Copy,
   Database,
   Download,
   ExternalLink,
@@ -117,6 +118,13 @@ function statLabel(key) {
   return key
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function absoluteUrl(url) {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  if (typeof window === "undefined") return url;
+  return `${window.location.origin}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
 function residueScoreStyle(score) {
@@ -1037,25 +1045,116 @@ function ArtifactGroup({ title, artifacts }) {
     <section className="download-section">
       <h2>{title.replaceAll("_", " ")}</h2>
       <div className="download-list">
-        {artifacts.map((artifact) => (
-          <article className="download-row" key={artifact.artifact_key}>
-            <div>
-              <h3>{artifact.label}</h3>
-              <p>{artifact.description}</p>
-              <small>{formatBytes(artifact.size_bytes)} · {artifact.sha256 ? artifact.sha256.slice(0, 12) : "checksum pending"}</small>
-            </div>
-            {artifact.available ? (
-              <a className="icon-button" href={artifact.url}>
-                <Download size={16} aria-hidden="true" />
-                Download
-              </a>
-            ) : (
-              <span className="pending-pill">Awaiting file</span>
-            )}
-            <DownloadFormatDetails artifact={artifact} />
-          </article>
-        ))}
+        {artifacts.map((artifact) => <ArtifactDownloadRow artifact={artifact} key={artifact.artifact_key} />)}
       </div>
+    </section>
+  );
+}
+
+function ArtifactDownloadRow({ artifact }) {
+  const isCommandPanel = artifact.metadata?.download_mode === "command_panel";
+  return (
+    <article className="download-row">
+      <div className="download-row-copy">
+        <h3>{artifact.label}</h3>
+        <p>{artifact.description}</p>
+        <small>
+          {formatBytes(artifact.size_bytes)}
+          {" · "}
+          {artifact.sha256 ? artifact.sha256.slice(0, 12) : "checksum pending"}
+          {artifact.metadata?.index_size_bytes ? ` · index ${formatBytes(artifact.metadata.index_size_bytes)}` : ""}
+        </small>
+      </div>
+      {isCommandPanel ? (
+        <EmbeddingCommandPanel artifact={artifact} />
+      ) : artifact.available ? (
+        <a className="icon-button" href={artifact.url}>
+          <Download size={16} aria-hidden="true" />
+          Download
+        </a>
+      ) : (
+        <span className="pending-pill">Awaiting file</span>
+      )}
+      <DownloadFormatDetails artifact={artifact} />
+    </article>
+  );
+}
+
+function EmbeddingCommandPanel({ artifact }) {
+  const [expanded, setExpanded] = useState(false);
+  const metadata = artifact.metadata || {};
+  const scriptUrl = absoluteUrl(artifact.url);
+  const urlsUrl = absoluteUrl(metadata.urls_url);
+  const apiBaseUrl = typeof window === "undefined" ? "/api" : `${window.location.origin}/api`;
+  const localFolder = metadata.local_folder || `openkinetics_embeddings/${metadata.model_key || "model"}/residue_vecs`;
+  const scriptName = artifact.relative_path?.split("/").pop() || `${metadata.model_key || "embeddings"}-download.sh`;
+  const urlsName = metadata.urls_path?.split("/").pop() || `${metadata.model_key || "embeddings"}.urls.txt`;
+  const scriptCommand = [
+    `curl -fL --retry 5 -o ${scriptName} "${scriptUrl}"`,
+    `chmod +x ${scriptName}`,
+    `OPENKINETICS_API_BASE_URL="${apiBaseUrl}" ./${scriptName}`
+  ].join("\n");
+  const ariaCommand = urlsUrl
+    ? [
+        `curl -fL --retry 5 -o ${urlsName} "${urlsUrl}"`,
+        `mkdir -p ${localFolder}`,
+        `aria2c -c -x 4 -s 4 -d ${localFolder} -i ${urlsName}`
+      ].join("\n")
+    : "";
+
+  if (!artifact.available) {
+    return <span className="pending-pill">Awaiting commands</span>;
+  }
+
+  return (
+    <div className="command-panel-shell">
+      <button
+        type="button"
+        className="icon-button"
+        onClick={() => setExpanded((current) => !current)}
+        aria-expanded={expanded}
+      >
+        {expanded ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}
+        Download commands
+      </button>
+      {expanded ? (
+        <div className="command-panel">
+          <CommandBlock title="Curl script" command={scriptCommand} />
+          {metadata.urls_available ? <CommandBlock title="Parallel download" command={ariaCommand} /> : null}
+          {metadata.index_available ? (
+            <p className="command-panel-note">
+              Index: <a href={metadata.index_url}>{metadata.index_path}</a>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CommandBlock({ title, command }) {
+  const [copied, setCopied] = useState(false);
+  async function copyCommand() {
+    if (!navigator.clipboard) return;
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch (_error) {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <section className="command-block">
+      <div className="command-block-header">
+        <strong>{title}</strong>
+        <button type="button" className="icon-button subtle" onClick={copyCommand}>
+          <Copy size={15} aria-hidden="true" />
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre><code>{command}</code></pre>
     </section>
   );
 }

@@ -8,6 +8,7 @@ ID collision occurs. The data portal mounts that directory read-only.
 from pathlib import Path
 import hashlib
 import json
+import re
 import sqlite3
 import tempfile
 import zipfile
@@ -59,6 +60,13 @@ SEQUENCE_ARTIFACT_DEFINITIONS = {
         "array_path": "pseq2sites/scores/{sequence_id}.npy",
     },
 }
+
+EMBEDDING_ARTIFACT_KEYS = frozenset(
+    key
+    for key, definition in SEQUENCE_ARTIFACT_DEFINITIONS.items()
+    if definition["array_kind"] == "embedding"
+)
+SAFE_SEQUENCE_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 PSEQ2SITES_PREVIEW_LIMIT = 10000
 TRUNCATED_ARTIFACT_N_TERMINAL_RESIDUES = 512
@@ -128,7 +136,7 @@ def resolve_sequence_id(sequence):
 
 def artifact_path(sequence_id, artifact_key):
     definition = SEQUENCE_ARTIFACT_DEFINITIONS.get(artifact_key)
-    if not definition:
+    if not definition or not sequence_id or not SAFE_SEQUENCE_ID_RE.match(sequence_id):
         return None
     rel_root = settings.SEQUENCE_ARTIFACT_ROOTS[definition["root_setting"]]
     root = (Path(settings.SEQUENCE_INFO_ROOT) / rel_root).resolve()

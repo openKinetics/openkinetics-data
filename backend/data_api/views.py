@@ -6,7 +6,12 @@ from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 
 from .models import Measurement, Release, ReleaseArtifact, Sequence, Substrate
-from .sequence_artifacts import SEQUENCE_ARTIFACT_DEFINITIONS, artifact_path, sequence_artifact_archive
+from .sequence_artifacts import (
+    EMBEDDING_ARTIFACT_KEYS,
+    SEQUENCE_ARTIFACT_DEFINITIONS,
+    artifact_path,
+    sequence_artifact_archive,
+)
 from .serializers import (
     artifact_payload,
     measurement_detail,
@@ -313,6 +318,21 @@ def sequence_artifact_download(_request, sequence_id, artifact_key):
         as_attachment=True,
         filename=filename,
         content_type=definition["content_type"],
+    )
+
+
+def raw_embedding_artifact_download(_request, artifact_key, sequence_id):
+    definition = SEQUENCE_ARTIFACT_DEFINITIONS.get(artifact_key)
+    if not definition or artifact_key not in EMBEDDING_ARTIFACT_KEYS:
+        raise Http404("Unknown embedding artifact.")
+    path = artifact_path(sequence_id, artifact_key)
+    if not path or not path.exists() or not path.is_file():
+        raise Http404("Embedding artifact is not available.")
+    return FileResponse(
+        open(path, "rb"),
+        as_attachment=True,
+        filename="%s.npy" % sequence_id,
+        content_type="application/octet-stream",
     )
 
 
