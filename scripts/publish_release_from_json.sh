@@ -6,12 +6,18 @@ usage() {
 Usage:
   scripts/publish_release_from_json.sh /path/to/openkinetics_release.json [options]
 
-Builds release files, generates sequence artifacts through the GPU service,
-imports the release into Django as latest, and starts/restarts the website.
+Builds release files, indexes existing sequence artifacts, imports the release
+into Django as latest, and starts/restarts the website.
 
 Options:
+  --public-api-base-url URL   Public API base used in generated embedding commands.
+                              Defaults to $OPENKINETICS_PUBLIC_API_BASE_URL.
+  --generate-artifacts        Generate missing artifacts through the GPU service before
+                              building indexes/bundles. Default is to use existing files.
   --gpu-service-url URL       GPU service URL. Defaults to $GPU_EMBED_SERVICE_URL.
+                              Only required with --generate-artifacts.
   --gpu-service-token TOKEN   GPU service token. Defaults to $GPU_EMBED_SERVICE_TOKEN.
+                              Only required with --generate-artifacts.
   --sequence-info-root PATH   Host sequence_info root. Defaults to
                               $OPENKINETICS_SEQUENCE_INFO_HOST_DIR or
                               /home/saleh/webKinPred/media/sequence_info.
@@ -23,9 +29,12 @@ Options:
   --gpu-job-timeout SECONDS   GPU job wait timeout. Defaults to script default.
   --models "LIST"             Space-separated models, e.g. "prot_t5 esm2 esmc".
   --force                     Regenerate artifacts even if files already exist.
+                              Only used with --generate-artifacts.
   --submit-only               Submit GPU job and stop before import/restart.
+                              Only valid with --generate-artifacts.
   --skip-build                Do not rebuild Docker images.
-  --skip-artifacts            Build/import release metadata without GPU artifacts.
+  --skip-artifacts            Build/import release metadata without sequence artifact
+                              indexes, helper scripts, or bundles.
   --skip-import               Do not import the release into the backend DB.
   --skip-up                   Do not run docker compose up -d at the end.
   --dry-run                   Print generation work without executing GPU jobs.
@@ -71,6 +80,7 @@ cd "$repo_root"
 json_path=""
 gpu_service_url="${GPU_EMBED_SERVICE_URL:-}"
 gpu_service_token="${GPU_EMBED_SERVICE_TOKEN:-}"
+public_api_base_url="${OPENKINETICS_PUBLIC_API_BASE_URL:-}"
 sequence_info_root="${OPENKINETICS_SEQUENCE_INFO_HOST_DIR:-${OPENKINETICS_SEQUENCE_INFO_ROOT_HOST:-/home/saleh/webKinPred/media/sequence_info}}"
 runtime_host_dir="${OPENKINETICS_RUNTIME_HOST_DIR:-./runtime}"
 releases_host_dir="${OPENKINETICS_RELEASES_HOST_DIR:-./releases}"
@@ -81,6 +91,7 @@ http_timeout="120"
 gpu_job_timeout=""
 models=()
 force=0
+generate_artifacts=0
 submit_only=0
 skip_build=0
 skip_artifacts=0
@@ -97,6 +108,11 @@ while [[ $# -gt 0 ]]; do
     --gpu-service-url)
       [[ $# -ge 2 ]] || die "--gpu-service-url requires a value"
       gpu_service_url="$2"
+      shift 2
+      ;;
+    --public-api-base-url)
+      [[ $# -ge 2 ]] || die "--public-api-base-url requires a value"
+      public_api_base_url="$2"
       shift 2
       ;;
     --gpu-service-token)
@@ -139,6 +155,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --force)
       force=1
+      shift
+      ;;
+    --generate-artifacts)
+      generate_artifacts=1
       shift
       ;;
     --submit-only)
@@ -187,6 +207,9 @@ fi
 if [[ -z "$gpu_service_token" ]]; then
   gpu_service_token="$(dotenv_value GPU_EMBED_SERVICE_TOKEN)"
 fi
+if [[ -z "$public_api_base_url" ]]; then
+  public_api_base_url="$(dotenv_value OPENKINETICS_PUBLIC_API_BASE_URL)"
+fi
 if [[ "$runtime_host_dir_cli" -eq 0 && -z "${OPENKINETICS_RUNTIME_HOST_DIR:-}" ]]; then
   runtime_from_env_file="$(dotenv_value OPENKINETICS_RUNTIME_HOST_DIR)"
   if [[ -n "$runtime_from_env_file" ]]; then
@@ -221,7 +244,15 @@ print(Path(sys.argv[1]).expanduser().resolve())
 PY
 )"
 [[ -d "$sequence_info_abs" ]] || die "sequence_info root not found: $sequence_info_abs"
-[[ -f "$sequence_info_abs/seqmap.sqlite3" ]] || die "seqmap DB not found: $sequence_info_abs/seqmap.sqlite3"
+if [[ "$generate_artifacts" -eq 1 ]]; then
+  [[ -f "$sequence_info_abs/seqmap.sqlite3" ]] || die "seqmap DB not found: $sequence_info_abs/seqmap.sqlite3"
+fi
+if [[ "$submit_only" -eq 1 && "$generate_artifacts" -eq 0 ]]; then
+  die "--submit-only requires --generate-artifacts"
+fi
+if [[ "$skip_artifacts" -eq 0 && -z "$public_api_base_url" ]]; then
+  die "OPENKINETICS_PUBLIC_API_BASE_URL is required for generated embedding commands; set it in .env or pass --public-api-base-url"
+fi
 
 runtime_host_abs="$(python3 - "$runtime_host_dir" <<'PY'
 import sys
@@ -268,11 +299,13 @@ mkdir -p "$runtime_host_abs" "$releases_host_abs"
 export OPENKINETICS_RUNTIME_HOST_DIR="$runtime_host_abs"
 export OPENKINETICS_RELEASES_HOST_DIR="$releases_host_abs"
 export OPENKINETICS_SEQUENCE_INFO_HOST_DIR="$sequence_info_abs"
+export OPENKINETICS_PUBLIC_API_BASE_URL="$public_api_base_url"
 
 echo "release_id=$release_id"
 echo "input_json=$json_abs"
 echo "release_output=$releases_host_abs/$release_id"
 echo "sequence_info_root=$sequence_info_abs"
+echo "public_api_base_url=${public_api_base_url:-not_set}"
 
 if [[ "$skip_build" -eq 0 ]]; then
   run_compose build backend frontend
@@ -288,42 +321,54 @@ run_compose run --rm \
     --releases-dir /data/releases
 
 if [[ "$skip_artifacts" -eq 0 ]]; then
-  [[ -n "$gpu_service_url" || "$dry_run" -eq 1 ]] || die "GPU service URL is required; pass --gpu-service-url or set GPU_EMBED_SERVICE_URL"
-  [[ -n "$gpu_service_token" || "$dry_run" -eq 1 ]] || die "GPU service token is required; pass --gpu-service-token or set GPU_EMBED_SERVICE_TOKEN"
+  if [[ "$generate_artifacts" -eq 1 ]]; then
+    [[ -n "$gpu_service_url" || "$dry_run" -eq 1 ]] || die "GPU service URL is required; pass --gpu-service-url or set GPU_EMBED_SERVICE_URL"
+    [[ -n "$gpu_service_token" || "$dry_run" -eq 1 ]] || die "GPU service token is required; pass --gpu-service-token or set GPU_EMBED_SERVICE_TOKEN"
 
-  artifact_args=(
-    --source release
-    --release-id "$release_id"
-    --releases-dir /data/releases
-    --sequence-info-root /sequence_info
-    --seqmap-db /tmp/seqmap.sqlite3
-    --gpu-service-url "$gpu_service_url"
-    --gpu-service-token "$gpu_service_token"
-    --http-timeout "$http_timeout"
-  )
-  if [[ -n "$gpu_job_timeout" ]]; then
-    artifact_args+=(--gpu-job-timeout "$gpu_job_timeout")
-  fi
-  if [[ "${#models[@]}" -gt 0 ]]; then
-    artifact_args+=(--models "${models[@]}")
-  fi
-  if [[ "$force" -eq 1 ]]; then
-    artifact_args+=(--force)
-  fi
-  if [[ "$submit_only" -eq 1 ]]; then
-    artifact_args+=(--submit-only)
-  fi
-  if [[ "$dry_run" -eq 1 ]]; then
-    artifact_args+=(--dry-run)
-  fi
+    artifact_args=(
+      --source release
+      --release-id "$release_id"
+      --releases-dir /data/releases
+      --sequence-info-root /sequence_info
+      --seqmap-db /tmp/seqmap.sqlite3
+      --gpu-service-url "$gpu_service_url"
+      --gpu-service-token "$gpu_service_token"
+      --http-timeout "$http_timeout"
+    )
+    if [[ -n "$gpu_job_timeout" ]]; then
+      artifact_args+=(--gpu-job-timeout "$gpu_job_timeout")
+    fi
+    if [[ "${#models[@]}" -gt 0 ]]; then
+      artifact_args+=(--models "${models[@]}")
+    fi
+    if [[ "$force" -eq 1 ]]; then
+      artifact_args+=(--force)
+    fi
+    if [[ "$submit_only" -eq 1 ]]; then
+      artifact_args+=(--submit-only)
+    fi
+    if [[ "$dry_run" -eq 1 ]]; then
+      artifact_args+=(--dry-run)
+    fi
 
-  run_compose run --rm \
-    -e GPU_EMBED_SERVICE_URL="$gpu_service_url" \
-    -e GPU_EMBED_SERVICE_TOKEN="$gpu_service_token" \
-    -v "$sequence_info_abs:/sequence_info:ro" \
-    backend \
-    sh -lc 'cp /sequence_info/seqmap.sqlite3 /tmp/seqmap.sqlite3 && exec python scripts/generate_sequence_artifacts.py "$@"' \
-    sh "${artifact_args[@]}"
+    run_compose run --rm \
+      -e GPU_EMBED_SERVICE_URL="$gpu_service_url" \
+      -e GPU_EMBED_SERVICE_TOKEN="$gpu_service_token" \
+      -e OPENKINETICS_PUBLIC_API_BASE_URL="$public_api_base_url" \
+      -v "$sequence_info_abs:/sequence_info:ro" \
+      backend \
+      sh -lc 'cp /sequence_info/seqmap.sqlite3 /tmp/seqmap.sqlite3 && exec python scripts/generate_sequence_artifacts.py "$@"' \
+      sh "${artifact_args[@]}"
+  else
+    run_compose run --rm \
+      -e OPENKINETICS_PUBLIC_API_BASE_URL="$public_api_base_url" \
+      -v "$sequence_info_abs:/sequence_info:ro" \
+      backend \
+      python scripts/build_sequence_artifact_bundles.py \
+        --release-id "$release_id" \
+        --releases-dir /data/releases \
+        --sequence-info-root /sequence_info
+  fi
 fi
 
 if [[ "$submit_only" -eq 1 ]]; then
