@@ -24,7 +24,23 @@ import {
 
 const catlogUrl = "https://chowdhurylab.github.io/tools/catlog-static/";
 const chowdhuryLabUrl = "https://chowdhurylab.github.io/";
+const openKineticsUrl = "https://openkinetics.org/";
 const realKcatDoi = "https://doi.org/10.1101/2025.02.10.637555";
+const realKcatBibtex = String.raw`@article{sajeevan2025robust,
+  author = {Sajeevan, Karuna Anna and Osinuga, Abraham and Arunraj, B and Ferdous, Sakib and Shahreen, Nabia and Noor, Mohammed Sakib and Koneru, Shashank and Santos-Correa, Laura Mariana and Salehi, Rahil and Chowdhury, Niaz Bahar and Aryee, Randy and Calderon-Lopez, Brisa and Mali, Ankur and Saha, Rajib and Chowdhury, Ratul},
+  title = {{Robust Prediction of Enzyme Variant Kinetics with RealKcat}},
+  journal = {bioRxiv},
+  year = {2025},
+  note = {Preprint},
+  doi = {10.1101/2025.02.10.637555},
+  url = {https://doi.org/10.1101/2025.02.10.637555}
+}`;
+const openKineticsBibtex = String.raw`@unpublished{alwer2026accessing,
+  author = {Alwer, Saleh and Escoffier, Hugues and Taha, Karim and Boorla, Veda and Yu, Han and Santra, Somtirtha and Wang, Zechen and Egwu, Chidi and Osinuga, Abraham and Dey, Supantha and Srinivasan Raghunath, Vaishnavey and Zare, Farid and McGoldrick, Jack and Weder, Jan-Niklas and Kerkhoven, Eduard and Luo, Xiaozhou and Maranas, Costas D. and Zheng, Liangzhen and Wittig, Ulrike and Chowdhury, Ratul and Saha, Rajib and T{\"o}pfer, Nadine and Sauter, Thomas and Fleming, Ronan M. T.},
+  title = {{Accessing Enzyme Kinetic Data and Prediction Methods at Scale}},
+  note = {Unpublished manuscript},
+  year = {2026}
+}`;
 
 function formatNumber(value) {
   if (value === null || value === undefined || value === "") return "n/a";
@@ -1257,21 +1273,80 @@ function CitationPage() {
         <p>
           CatLog static browser: <a href={catlogUrl}>{catlogUrl}</a>
         </p>
-      </section>
-      <section className="panel wide-panel">
-        <h2>Current Citation</h2>
-        <p>
-          Sajeevan et al., Robust Prediction of Enzyme Variant Kinetics with RealKcat,
-          bioRxiv 2025.
-        </p>
-        <p>
-          DOI: <a href={realKcatDoi}>{realKcatDoi}</a>
-        </p>
+        <div className="citation-subsection">
+          <h3>Current Citation</h3>
+          <p>
+            Sajeevan et al., Robust Prediction of Enzyme Variant Kinetics with RealKcat,
+            bioRxiv 2025. DOI: <a href={realKcatDoi}>{realKcatDoi}</a>
+          </p>
+          <CitationBox
+            label="RealKcat BibTeX"
+            citation={realKcatBibtex}
+            filename="realkcat.bib"
+          />
+        </div>
       </section>
       <section className="panel wide-panel">
         <h2>OpenKinetics</h2>
-        <p>Data curated by CatLog collaborators, served by OpenKinetics.</p>
+        <p>
+          Data curated by CatLog collaborators, served by{" "}
+          <a href={openKineticsUrl}>OpenKinetics</a>.
+        </p>
+        <CitationBox
+          label="OpenKinetics BibTeX"
+          citation={openKineticsBibtex}
+          filename="openkinetics.bib"
+        />
       </section>
+    </div>
+  );
+}
+
+function CitationBox({ label, citation, filename }) {
+  const [copied, setCopied] = useState(false);
+  const downloadHref = useMemo(
+    () => `data:text/x-bibtex;charset=utf-8,${encodeURIComponent(citation)}`,
+    [citation]
+  );
+
+  async function copyCitation() {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(citation);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = citation;
+        textArea.setAttribute("readonly", "");
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch (_error) {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div className="citation-box">
+      <div className="citation-box-header">
+        <strong>{label}</strong>
+        <div className="citation-actions">
+          <button type="button" className="icon-button subtle" onClick={copyCitation}>
+            <Copy size={15} aria-hidden="true" />
+            {copied ? "Copied" : "Copy"}
+          </button>
+          <a className="icon-button subtle" href={downloadHref} download={filename}>
+            <Download size={15} aria-hidden="true" />
+            Download .bib
+          </a>
+        </div>
+      </div>
+      <pre className="citation-code"><code>{citation}</code></pre>
     </div>
   );
 }
