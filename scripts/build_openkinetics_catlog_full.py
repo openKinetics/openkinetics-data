@@ -441,7 +441,6 @@ def empty_stats():
         "rows_with_both_kcat_and_km": 0,
         "rows_without_primary_uniprot_id": 0,
         "mutant_rows": 0,
-        "rows_with_wild_type_sequence": 0,
         "rows_with_truncated_artifact_input": 0,
         "sequences_with_truncated_artifact_input": set(),
         "source_db_counts": defaultdict(int),
@@ -467,8 +466,6 @@ def update_stats(stats, datapoint):
         stats["rows_without_primary_uniprot_id"] += 1
     if datapoint["sequence"].get("is_mutant"):
         stats["mutant_rows"] += 1
-    if datapoint["sequence"].get("wild_type_sequence"):
-        stats["rows_with_wild_type_sequence"] += 1
     artifact_generation = datapoint["sequence"].get("sequence_artifact_generation") or {}
     if artifact_generation.get("input_sequence_was_truncated"):
         stats["rows_with_truncated_artifact_input"] += 1
@@ -507,7 +504,7 @@ def serializable_stats(stats):
         "rows_with_both_kcat_and_km": stats["rows_with_both_kcat_and_km"],
         "rows_without_primary_uniprot_id": stats["rows_without_primary_uniprot_id"],
         "mutant_rows": stats["mutant_rows"],
-        "rows_with_wild_type_sequence": stats["rows_with_wild_type_sequence"],
+        "wild_type_rows": stats["record_count"] - stats["mutant_rows"],
         "rows_with_truncated_artifact_input": stats["rows_with_truncated_artifact_input"],
         "sequences_with_truncated_artifact_input": len(stats["sequences_with_truncated_artifact_input"]),
     }

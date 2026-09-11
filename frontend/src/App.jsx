@@ -983,18 +983,6 @@ function DownloadStatsPanel({ stats, loading }) {
               rows={stats?.distributions?.substrate_datapoints || []}
               countLabel="Substrates"
             />
-            <TopListTable
-              title="Top enzymes"
-              rows={stats?.top_enzymes || []}
-              labelKey="enzyme_name"
-              secondary={(row) => `${formatText(row.organism)} · EC ${formatText(row.ec_number)} · ${formatText(row.primary_uniprot_id)}`}
-            />
-            <TopListTable
-              title="Top substrates"
-              rows={stats?.top_substrates || []}
-              labelKey="substrate_name"
-              secondary={(row) => row.substrate_id}
-            />
           </div>
           <RejectedRowsPanel values={rejectedRows} />
         </div>
@@ -1013,7 +1001,8 @@ function visibleReleaseCounts(counts) {
     "mutant_rows_without_variant_sequence",
     "rows_marked_mutant",
     "rows_with_variant_sequence",
-    "rows_with_wild_type_sequence"
+    "rows_with_wild_type_sequence",
+    "wild_type_rows"
   ]);
   return Object.fromEntries(
     Object.entries(counts || {}).filter(([key]) => !hiddenKeys.has(key))
@@ -1024,20 +1013,28 @@ function SequenceRowSummary({ counts }) {
   const mutantRows = counts.mutant_rows
     ?? counts.rows_marked_mutant
     ?? counts.mutant_rows_using_variant_sequence;
-  const wildTypeSequenceRows = counts.rows_with_wild_type_sequence;
-  if (mutantRows === undefined && wildTypeSequenceRows === undefined) return null;
+  const wildTypeRows = counts.wild_type_rows
+    ?? (
+      counts.datapoints !== undefined && mutantRows !== undefined
+        ? Math.max(Number(counts.datapoints) - Number(mutantRows), 0)
+        : undefined
+    );
+  if (mutantRows === undefined && wildTypeRows === undefined) return null;
 
   return (
     <section className="stats-subsection sequence-row-summary">
-      <h2>Sequence coverage</h2>
+      <div className="chart-heading">
+        <h2>Sequence types</h2>
+        <span>{formatNumber(counts.datapoints)} rows</span>
+      </div>
       <div className="sequence-row-grid">
         <div>
           <span>Mutant Rows</span>
           <strong>{formatNumber(mutantRows)}</strong>
         </div>
         <div>
-          <span>Rows With Wild Type Sequence</span>
-          <strong>{formatNumber(wildTypeSequenceRows)}</strong>
+          <span>Wild Type Rows</span>
+          <strong>{formatNumber(wildTypeRows)}</strong>
         </div>
       </div>
     </section>
@@ -1242,33 +1239,6 @@ function DistributionTable({ title, rows, countLabel }) {
             <tr key={`${title}-${row.bucket}`}>
               <td>{row.bucket}</td>
               <td>{formatNumber(row.count)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
-  );
-}
-
-function TopListTable({ title, rows, labelKey, secondary }) {
-  if (!rows.length) return null;
-  return (
-    <section className="stats-subsection">
-      <h2>{title}</h2>
-      <table className="stats-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Context</th>
-            <th>Datapoints</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={`${title}-${row[labelKey]}-${secondary(row)}`}>
-              <td>{row[labelKey]}</td>
-              <td>{secondary(row)}</td>
-              <td>{formatNumber(row.datapoints)}</td>
             </tr>
           ))}
         </tbody>

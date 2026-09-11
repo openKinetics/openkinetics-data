@@ -134,6 +134,7 @@ INTERNAL_COUNT_KEYS = {
     "mutant_rows_without_variant_sequence",
     "rows_marked_mutant",
     "rows_with_variant_sequence",
+    "rows_with_wild_type_sequence",
 }
 
 
@@ -165,6 +166,8 @@ def public_release_counts(counts):
             if legacy_key in counts:
                 counts["mutant_rows"] = counts[legacy_key]
                 break
+    if "wild_type_rows" not in counts and "datapoints" in counts and "mutant_rows" in counts:
+        counts["wild_type_rows"] = max(counts["datapoints"] - counts["mutant_rows"], 0)
     return {
         key: value
         for key, value in counts.items()
@@ -173,8 +176,10 @@ def public_release_counts(counts):
 
 
 def release_counts_from_db(measurements, release):
+    datapoints = measurements.count()
+    mutant_rows = measurements.filter(sequence__wild_type=False).count()
     return {
-        "datapoints": measurements.count(),
+        "datapoints": datapoints,
         "unique_sequences": Sequence.objects.filter(measurements__release=release).distinct().count(),
         "unique_substrates": Substrate.objects.filter(measurements__release=release).distinct().count(),
         "unique_ec_numbers": measurements.exclude(ec_number="").values("ec_number").distinct().count(),
@@ -184,7 +189,8 @@ def release_counts_from_db(measurements, release):
             kcat__isnull=False,
             km__isnull=False,
         ).count(),
-        "mutant_rows": measurements.filter(sequence__wild_type=False).count(),
+        "mutant_rows": mutant_rows,
+        "wild_type_rows": datapoints - mutant_rows,
     }
 
 
