@@ -1276,27 +1276,266 @@ function CitationPage() {
   );
 }
 
+const apiDocSections = [
+  {
+    title: "Release and Download Metadata",
+    description: "Inspect the active release, release history, download files, command-panel metadata, and release-level counts.",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/api/downloads/",
+        purpose: "Grouped download artifacts for the latest release, including stats and embedding command metadata.",
+        params: []
+      },
+      {
+        method: "GET",
+        path: "/api/releases/latest/",
+        purpose: "Full manifest and schema for the latest release.",
+        params: []
+      },
+      {
+        method: "GET",
+        path: "/api/releases/{release_id}/",
+        purpose: "Manifest and schema for one immutable release.",
+        params: [{ name: "release_id", values: "slug", description: "Release identifier such as openkinetics-catlog-full-2026-09." }]
+      },
+      {
+        method: "GET",
+        path: "/api/stats/",
+        purpose: "Compact counts for the latest release.",
+        params: []
+      }
+    ],
+    examples: {
+      curl: `curl -s https://data.openkinetics.org/api/downloads/ | jq '.release, .stats.counts'
+
+curl -LO https://data.openkinetics.org/releases/openkinetics-catlog-full-2026-09/measurements.jsonl.gz
+
+curl -s https://data.openkinetics.org/api/releases/latest/ | jq '.release.manifest.counts'`,
+      python: `import requests
+
+base = "https://data.openkinetics.org/api"
+
+downloads = requests.get(f"{base}/downloads/", timeout=30).json()
+print(downloads["release"]["release_id"])
+print(downloads["stats"]["counts"])
+
+latest = requests.get(f"{base}/releases/latest/", timeout=30).json()["release"]
+print(latest["manifest"]["download_note"])`
+    }
+  },
+  {
+    title: "Measurement Search",
+    description: "Page through kinetic measurements, use exact enzyme drilldown filters, and fetch rich measurement details by record key.",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/api/measurements/",
+        purpose: "Paginated measurement summaries for the latest release.",
+        params: [
+          { name: "q", values: "text", description: "Search over enzyme, substrate, EC, organism, IDs, source, and evidence fields." },
+          { name: "page, page_size", values: "integers", description: "Pagination. page_size is capped at 100." },
+          { name: "has_kcat, has_km, wild_type", values: "true or false", description: "Boolean filters for reported metrics and sequence type." },
+          { name: "ec_number, ec_number_exact, ec_class", values: "text", description: "EC prefix, exact EC, or EC top-level class filtering." },
+          { name: "organism, organism_exact, substrate", values: "text", description: "Organism and substrate text filters." },
+          { name: "enzyme_identity", values: "true", description: "Use with enzyme_name, ec_number_exact, organism_exact, and optional uniprot for exact enzyme drilldown." }
+        ]
+      },
+      {
+        method: "GET",
+        path: "/api/measurements/{record_key}/",
+        purpose: "Full measurement detail including sequence, mutant fields, evidence, provenance, splits, and sequence artifacts.",
+        params: [{ name: "record_key", values: "string", description: "Stable record identifier from measurement search results." }]
+      },
+      {
+        method: "GET",
+        path: "/api/facets/",
+        purpose: "Filter facets for the latest release.",
+        params: []
+      }
+    ],
+    examples: {
+      curl: `curl -sG https://data.openkinetics.org/api/measurements/ \\
+  --data-urlencode 'q=ATP' \\
+  --data-urlencode 'has_km=true' \\
+  --data-urlencode 'page_size=10' | jq '.pagination, .results[0]'
+
+curl -sG https://data.openkinetics.org/api/measurements/ \\
+  --data-urlencode 'enzyme_identity=true' \\
+  --data-urlencode 'enzyme_name=alcohol dehydrogenase' \\
+  --data-urlencode 'ec_number_exact=1.1.1.1' \\
+  --data-urlencode 'organism_exact=Homo sapiens' \\
+  --data-urlencode 'page_size=100' | jq '.results[].record_key'
+
+curl -s https://data.openkinetics.org/api/measurements/RECORD_KEY/ | jq '.measurement.sequence'`,
+      python: `import requests
+
+base = "https://data.openkinetics.org/api"
+
+page = requests.get(
+    f"{base}/measurements/",
+    params={"q": "ATP", "has_km": "true", "page_size": 10},
+    timeout=30,
+).json()
+
+record_key = page["results"][0]["record_key"]
+detail = requests.get(f"{base}/measurements/{record_key}/", timeout=30).json()
+
+sequence = detail["measurement"]["sequence"]
+print(sequence["sequence_id"], sequence["is_mutant"], sequence["mutation_signature"])`
+    }
+  },
+  {
+    title: "Sequences, Substrates, and Artifacts",
+    description: "Fetch sequence/substrate metadata, single-sequence ZIP artifacts, raw embedding arrays, and bulk embedding helper files.",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/api/sequences/{sequence_id}/",
+        purpose: "Full sequence metadata and amino-acid sequence.",
+        params: [{ name: "sequence_id", values: "string", description: "Stable sequence ID from measurements or sequences.jsonl.gz." }]
+      },
+      {
+        method: "GET",
+        path: "/api/substrates/{substrate_id}/",
+        purpose: "Substrate metadata including name, SMILES, and InChIKey when available.",
+        params: [{ name: "substrate_id", values: "string", description: "Stable substrate ID from measurements or substrates.jsonl.gz." }]
+      },
+      {
+        method: "GET",
+        path: "/api/sequences/{sequence_id}/artifacts/{artifact_key}/",
+        purpose: "Single-sequence ZIP artifact with metadata plus one array.",
+        params: [{ name: "artifact_key", values: "esm2_residue, esmc_residue, prot_t5_residue, pseq2sites_scores", description: "Artifact to package for one sequence." }]
+      },
+      {
+        method: "GET",
+        path: "/api/artifacts/{artifact_key}/{sequence_id}.npy",
+        purpose: "Raw embedding .npy stream for bulk command downloads.",
+        params: [{ name: "artifact_key", values: "esm2_residue, esmc_residue, prot_t5_residue", description: "Embeddings only. Binding-site scores use the normal download bundle or single-sequence ZIP endpoint." }]
+      }
+    ],
+    examples: {
+      curl: `curl -s https://data.openkinetics.org/api/sequences/SEQUENCE_ID/ | jq '.sequence.length'
+
+curl -L -o SEQUENCE_ID_esm2_residue.zip \\
+  https://data.openkinetics.org/api/sequences/SEQUENCE_ID/artifacts/esm2_residue/
+
+curl -L -C - -o openkinetics_embeddings/esm2/residue_vecs/SEQUENCE_ID.npy \\
+  https://data.openkinetics.org/api/artifacts/esm2_residue/SEQUENCE_ID.npy
+
+curl -L -o openkinetics-catlog-full-2026-09-esm2-download.sh \\
+  https://data.openkinetics.org/releases/openkinetics-catlog-full-2026-09/downloads/openkinetics-catlog-full-2026-09-esm2-download.sh`,
+      python: `from pathlib import Path
+import requests
+
+base = "https://data.openkinetics.org/api"
+sequence_id = "SEQUENCE_ID"
+
+sequence = requests.get(f"{base}/sequences/{sequence_id}/", timeout=30).json()["sequence"]
+print(sequence["length"], sequence["primary_uniprot_id"])
+
+out = Path("openkinetics_embeddings/esm2/residue_vecs")
+out.mkdir(parents=True, exist_ok=True)
+url = f"{base}/artifacts/esm2_residue/{sequence_id}.npy"
+with requests.get(url, stream=True, timeout=120) as response:
+    response.raise_for_status()
+    with open(out / f"{sequence_id}.npy", "wb") as handle:
+        for chunk in response.iter_content(chunk_size=1024 * 1024):
+            if chunk:
+                handle.write(chunk)`
+    }
+  }
+];
+
+function ExampleTabs({ examples }) {
+  const tabs = Object.keys(examples);
+  const [active, setActive] = useState(tabs[0]);
+  return (
+    <div className="api-example-tabs">
+      <div className="api-tab-list" role="tablist" aria-label="Example language">
+        {tabs.map((tab) => (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={active === tab}
+            className={active === tab ? "active" : ""}
+            onClick={() => setActive(tab)}
+            key={tab}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+      <pre className="code-block api-code"><code>{examples[active]}</code></pre>
+    </div>
+  );
+}
+
+function EndpointTable({ endpoints }) {
+  return (
+    <div className="api-endpoint-list">
+      {endpoints.map((endpoint) => (
+        <article className="api-endpoint" key={`${endpoint.method}-${endpoint.path}`}>
+          <div className="api-endpoint-heading">
+            <span className="method-pill">{endpoint.method}</span>
+            <code>{endpoint.path}</code>
+          </div>
+          <p>{endpoint.purpose}</p>
+          {endpoint.params.length ? (
+            <table className="api-param-table">
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  <th>Values</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {endpoint.params.map((param) => (
+                  <tr key={`${endpoint.path}-${param.name}`}>
+                    <td><code>{param.name}</code></td>
+                    <td>{param.values}</td>
+                    <td>{param.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function ApiDocsPage() {
   return (
     <div className="page text-page">
-      <h1>API</h1>
-      <section className="panel wide-panel">
-        <h2>Endpoints</h2>
-        <pre className="code-block">{`GET /api/stats/
-GET /api/measurements/?q=kinase&has_kcat=true
-GET /api/measurements/{record_key}/
-GET /api/downloads/
-GET /api/releases/latest/`}</pre>
+      <div className="page-heading">
+        <h1>API</h1>
+        <p>JSON endpoints for releases, measurements, sequence metadata, download files, and sequence artifacts.</p>
+      </div>
+      <section className="api-overview-grid">
+        <div>
+          <span>Base URL</span>
+          <code>https://data.openkinetics.org/api</code>
+        </div>
+        <div>
+          <span>Response format</span>
+          <strong>JSON</strong>
+        </div>
+        <div>
+          <span>Pagination</span>
+          <strong>page + page_size</strong>
+        </div>
       </section>
-      <section className="panel wide-panel">
-        <h2>Python</h2>
-        <pre className="code-block">{`import requests
-
-records = requests.get(
-    "https://data.openkinetics.org/api/measurements/",
-    params={"q": "ATP", "has_km": "true"},
-).json()`}</pre>
-      </section>
+      {apiDocSections.map((section) => (
+        <section className="panel wide-panel api-doc-section" key={section.title}>
+          <h2>{section.title}</h2>
+          <p>{section.description}</p>
+          <EndpointTable endpoints={section.endpoints} />
+          <ExampleTabs examples={section.examples} />
+        </section>
+      ))}
     </div>
   );
 }
