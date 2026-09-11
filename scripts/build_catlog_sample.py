@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Build a 100-record CatLog/OpenKinetics demo sample.
+"""Build a 100-record CatLog/OpenKinetics sample.
 
 The source CatLog table is a flat JSONL export without protein sequences or
 substrate structures. This script selects rows that can be resolved through
-UniProt and PubChem, then writes a single self-describing demo JSON artifact.
+UniProt and PubChem, then writes a single self-describing JSON artifact.
 """
 
 import argparse
@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 
 DEFAULT_SOURCE = "/Users/mrsalwer/Downloads/catlog-table.jsonl.gz"
 DEFAULT_OUTPUT = "data/sample/openkinetics_demo_100.json"
-DEFAULT_CACHE = "/private/tmp/openkinetics_catlog_demo_cache"
+DEFAULT_CACHE = "/private/tmp/openkinetics_catlog_sample_cache"
 DEFAULT_SEQMAP_DB = os.environ.get(
     "OPENKINETICS_SEQMAP_DB",
     os.path.join(os.environ.get("OPENKINETICS_SEQUENCE_INFO_ROOT", "/sequence_info"), "seqmap.sqlite3"),
@@ -145,7 +145,7 @@ def cache_path(cache_dir, namespace, key, suffix):
 
 def http_get(url, timeout=30, retries=2, sleep_seconds=0.2):
     headers = {
-        "User-Agent": "OpenKinetics demo data builder (contact: predictor.openkinetics.org)",
+        "User-Agent": "OpenKinetics sample data builder (contact: predictor.openkinetics.org)",
         "Accept": "*/*",
     }
     last_error = None
@@ -543,7 +543,7 @@ def build_manifest(args, source_sha256, candidates_count, datapoints):
         statuses[row["evidence"].get("verification_status") or "unknown"] += 1
     return {
         "release_id": "openkinetics-catlog-demo-2026-08",
-        "title": "OpenKinetics Data demo sample from CatLog table export",
+        "title": "OpenKinetics Data sample from CatLog table export",
         "generated_at": utc_now_iso(),
         "record_count": len(datapoints),
         "candidate_rows_passing_local_filters": candidates_count,
@@ -790,7 +790,7 @@ def parse_args(argv):
     parser.add_argument("--seqmap-db", default=DEFAULT_SEQMAP_DB)
     parser.add_argument(
         "--normalize-existing",
-        help="Normalize an existing demo sample JSON instead of rebuilding from the CatLog export.",
+        help="Normalize an existing sample JSON instead of rebuilding from the CatLog export.",
     )
     parser.add_argument("--verbose", action="store_true")
     return parser.parse_args(argv)

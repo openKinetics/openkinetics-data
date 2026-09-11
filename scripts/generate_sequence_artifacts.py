@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Generate OpenKinetics demo sequence artifact arrays via the GPU service.
+"""Generate OpenKinetics sequence artifact arrays via the GPU service.
 
 Default mode is for the production data server:
 
-  python3 scripts/generate_demo_sequence_artifacts.py
+  python3 scripts/generate_sequence_artifacts.py
 
-It resolves the committed demo sequences through the predictor seqmap DB,
+It resolves the sample or release sequences through the predictor seqmap DB,
 submits the missing sequence IDs to the remote GPU embedding service, waits for
 completion, validates the shared artifact cache, then rebuilds release bundles.
 
-GPU worker mode is for GPU_EMBED_STEP_CMD_OPENKINETICS_DEMO_SEQUENCE_ARTIFACTS:
+GPU worker mode is for GPU_EMBED_STEP_CMD_OPENKINETICS_SEQUENCE_ARTIFACTS:
 
-  python3 scripts/generate_demo_sequence_artifacts.py --worker-mode \
+  python3 scripts/generate_sequence_artifacts.py --worker-mode \
     --seq-id-to-seq-file {seq_id_to_seq_file}
 """
 
@@ -54,14 +54,14 @@ DEFAULT_RELEASES_DIR = Path(
     os.environ.get("OPENKINETICS_RELEASES_ROOT", str(OPENKINETICS_REPO_ROOT / "releases"))
 )
 DEFAULT_WEBKINPRED_ROOT = Path(os.environ.get("GPU_EMBED_REPO_ROOT", "/home/saleh/webKinPred"))
-DEFAULT_GPU_STEP_KEY = "openkinetics_demo_sequence_artifacts"
+DEFAULT_GPU_STEP_KEY = "openkinetics_sequence_artifacts"
 DEFAULT_GPU_WORKER_SCRIPT = Path(
     os.environ.get(
         "OPENKINETICS_GPU_WORKER_SCRIPT",
         str(
             Path(os.environ.get("OPENKINETICS_GPU_REPO_ROOT", str(OPENKINETICS_REPO_ROOT)))
             / "scripts"
-            / "generate_demo_sequence_artifacts.py"
+            / "generate_sequence_artifacts.py"
         ),
     )
 )
@@ -106,7 +106,7 @@ BATCH_SIZE_ENVS = {
 
 
 @dataclass(frozen=True)
-class DemoSequence:
+class ReleaseSequence:
     sequence_id: str
     sequence: str
     source_sequence_id: str
@@ -229,7 +229,7 @@ def dry_run_resolve_seqmap_ids(
     raw_rows: list[tuple[str, str]],
     *,
     seqmap_db: Path,
-) -> list[DemoSequence] | None:
+) -> list[ReleaseSequence] | None:
     if not seqmap_db.exists():
         print(f"seqmap_db={seqmap_db} is missing; dry run will use committed sequence IDs.")
         found_ids: dict[str, str] = {}
@@ -262,7 +262,7 @@ def dry_run_resolve_seqmap_ids(
         item["record_count"] = int(item["record_count"]) + 1
     return sorted(
         [
-            DemoSequence(
+            ReleaseSequence(
                 sequence_id=str(item["sequence_id"]),
                 source_sequence_id=str(item["source_sequence_id"]),
                 sequence=sequence,
@@ -343,12 +343,12 @@ def load_sequences_from_release(release_dir: Path) -> tuple[list[tuple[str, str]
     return rows, len(rows)
 
 
-def load_sequences_from_worker_file(path: Path) -> list[DemoSequence]:
+def load_sequences_from_worker_file(path: Path) -> list[ReleaseSequence]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise SystemExit(f"Expected seq_id_to_seq object in {path}")
     rows = [
-        DemoSequence(
+        ReleaseSequence(
             sequence_id=str(sequence_id).strip(),
             source_sequence_id=str(sequence_id).strip(),
             sequence=clean_sequence(sequence),
@@ -360,14 +360,14 @@ def load_sequences_from_worker_file(path: Path) -> list[DemoSequence]:
     return sorted(rows, key=lambda row: row.sequence_id)
 
 
-def resolve_demo_sequences(
+def resolve_release_sequences(
     raw_rows: list[tuple[str, str]],
     *,
     seqmap_db: Path,
     webkinpred_root: Path,
     allow_id_mismatch: bool,
     dry_run: bool,
-) -> list[DemoSequence]:
+) -> list[ReleaseSequence]:
     if dry_run:
         return dry_run_resolve_seqmap_ids(raw_rows, seqmap_db=seqmap_db) or []
 
@@ -402,13 +402,13 @@ def resolve_demo_sequences(
             for source_id, seqmap_id, prefix in mismatches[:5]
         )
         raise SystemExit(
-            "Demo sequence IDs do not match the predictor seqmap DB. "
+            "Release sequence IDs do not match the predictor seqmap DB. "
             "Regenerate/normalize the release data first, or pass "
             f"--allow-id-mismatch to generate by seqmap IDs anyway. Examples: {preview}"
         )
 
     sequences = [
-        DemoSequence(
+        ReleaseSequence(
             sequence_id=str(item["sequence_id"]),
             source_sequence_id=str(item["source_sequence_id"]),
             sequence=sequence,
@@ -482,7 +482,7 @@ def artifact_shape_matches(model_key: str, sequence: str, path: Path) -> bool:
 
 
 def missing_artifact_ids(
-    sequences: list[DemoSequence],
+    sequences: list[ReleaseSequence],
     *,
     sequence_info_root: Path,
     model_key: str,
@@ -505,7 +505,7 @@ def missing_artifact_ids(
 
 
 def ids_missing_any_artifact(
-    sequences: list[DemoSequence],
+    sequences: list[ReleaseSequence],
     *,
     sequence_info_root: Path,
     models: list[str],
@@ -528,7 +528,7 @@ def ids_missing_any_artifact(
 
 @contextmanager
 def prepared_inputs(
-    sequences: list[DemoSequence],
+    sequences: list[ReleaseSequence],
     sequence_ids: list[str] | None = None,
 ) -> Iterator[PreparedInputs]:
     selected_ids = (
@@ -589,7 +589,7 @@ def generate_residue_embeddings(
     *,
     model_key: str,
     sequence_ids: list[str],
-    sequences: list[DemoSequence],
+    sequences: list[ReleaseSequence],
     env: dict[str, str],
     webkinpred_root: Path,
     dry_run: bool,
@@ -666,7 +666,7 @@ def read_binding_site_rows(path: Path) -> dict[str, str]:
 
 
 def pseq2sites_tsv_ids_needing_scores(
-    sequences: list[DemoSequence],
+    sequences: list[ReleaseSequence],
     existing_rows: dict[str, str],
     *,
     force: bool,
@@ -691,7 +691,7 @@ def pseq2sites_tsv_ids_needing_scores(
 
 def run_pseq2sites(
     *,
-    sequences: list[DemoSequence],
+    sequences: list[ReleaseSequence],
     sequence_ids: list[str],
     env: dict[str, str],
     webkinpred_root: Path,
@@ -788,7 +788,7 @@ def read_npy_shape(path: Path) -> tuple[int, ...]:
 
 def convert_pseq2sites_scores(
     *,
-    sequences: list[DemoSequence],
+    sequences: list[ReleaseSequence],
     sequence_ids: list[str] | None = None,
     media_path: Path,
     sequence_info_root: Path,
@@ -839,7 +839,7 @@ def convert_pseq2sites_scores(
 
 def validate_artifacts(
     *,
-    sequences: list[DemoSequence],
+    sequences: list[ReleaseSequence],
     sequence_info_root: Path,
     models: list[str],
 ) -> None:
@@ -952,7 +952,7 @@ def submit_gpu_service_job(
     token: str,
     step_key: str,
     sequence_ids: list[str],
-    sequences: list[DemoSequence],
+    sequences: list[ReleaseSequence],
     timeout: float,
     dry_run: bool,
 ) -> str | None:
@@ -970,7 +970,7 @@ def submit_gpu_service_job(
     )
     payload = {
         "method_key": "OpenKinetics-Data",
-        "target": "demo_sequence_artifacts",
+        "target": "sequence_artifacts",
         "profile": "release_residue_matrices",
         "step_work": {step_key: sequence_ids},
         "seq_id_to_seq": seq_id_to_seq,
@@ -1130,7 +1130,7 @@ def run_worker_mode(args: argparse.Namespace) -> int:
             raw_rows, _source_count = load_sequences_from_sample(repo_path(args.sample_path))
         else:
             raw_rows, _source_count = load_sequences_from_release(releases_dir / args.release_id)
-        sequences = resolve_demo_sequences(
+        sequences = resolve_release_sequences(
             raw_rows,
             seqmap_db=seqmap_db,
             webkinpred_root=webkinpred_root,
@@ -1286,7 +1286,7 @@ def run_production_mode(args: argparse.Namespace) -> int:
         raw_rows, source_count = load_sequences_from_sample(repo_path(args.sample_path))
     else:
         raw_rows, source_count = load_sequences_from_release(releases_dir / args.release_id)
-    sequences = resolve_demo_sequences(
+    sequences = resolve_release_sequences(
         raw_rows,
         seqmap_db=seqmap_db,
         webkinpred_root=webkinpred_root,
@@ -1374,7 +1374,7 @@ def parse_args() -> argparse.Namespace:
         "--source",
         choices=("sample", "release"),
         default="sample",
-        help="Read demo sequences from the sample JSON or release sequences.jsonl.gz.",
+        help="Read sequences from the sample JSON or release sequences.jsonl.gz.",
     )
     parser.add_argument("--release-id", default=DEFAULT_RELEASE_ID)
     parser.add_argument("--releases-dir", default=str(DEFAULT_RELEASES_DIR))

@@ -6,17 +6,17 @@ This project backs `data.openkinetics.org`. It is separate from the predictor
 application, but is designed to deploy on the same server and match the
 predictor site's general visual style.
 
-## Current Demo Data
+## Current Sample Data
 
-The current demo sample is:
+The current sample artifact is:
 
 ```text
 data/sample/openkinetics_demo_100.json
 ```
 
 It contains 100 CatLog-derived datapoints with UniProt sequences and PubChem
-substrate structures joined in for the demo. The sample is a demo release, not
-the full CatLog source snapshot.
+substrate structures joined in. The sample is not the full CatLog source
+snapshot.
 
 ## Attribution
 
@@ -38,7 +38,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python backend/manage.py migrate
 python scripts/build_release_files.py
-python backend/manage.py import_demo_release
+python backend/manage.py import_release
 python backend/manage.py runserver 8001
 ```
 
@@ -88,7 +88,7 @@ docker compose build
 docker compose run --rm backend python backend/manage.py migrate
 docker compose run --rm backend python scripts/build_release_files.py
 docker compose run --rm backend python scripts/build_sequence_artifact_bundles.py
-docker compose run --rm backend python backend/manage.py import_demo_release
+docker compose run --rm backend python backend/manage.py import_release
 docker compose up -d
 ```
 

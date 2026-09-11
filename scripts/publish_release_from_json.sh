@@ -322,7 +322,7 @@ if [[ "$skip_artifacts" -eq 0 ]]; then
     -e GPU_EMBED_SERVICE_TOKEN="$gpu_service_token" \
     -v "$sequence_info_abs:/sequence_info:ro" \
     backend \
-    sh -lc 'cp /sequence_info/seqmap.sqlite3 /tmp/seqmap.sqlite3 && exec python scripts/generate_demo_sequence_artifacts.py "$@"' \
+    sh -lc 'cp /sequence_info/seqmap.sqlite3 /tmp/seqmap.sqlite3 && exec python scripts/generate_sequence_artifacts.py "$@"' \
     sh "${artifact_args[@]}"
 fi
 
@@ -335,7 +335,7 @@ if [[ "$skip_import" -eq 0 && "$dry_run" -eq 0 ]]; then
   run_compose run --rm \
     -v "$json_dir:/release_input:ro" \
     backend \
-    python backend/manage.py import_demo_release \
+    python backend/manage.py import_release \
       --sample "$container_json" \
       --latest
 fi

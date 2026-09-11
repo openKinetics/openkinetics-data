@@ -222,13 +222,13 @@ def sync_artifacts(release):
 
 
 class Command(BaseCommand):
-    help = "Import the 100-record CatLog/OpenKinetics demo sample."
+    help = "Import an OpenKinetics release JSON."
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--sample",
             default=str(settings.BASE_DIR / DEFAULT_SAMPLE_PATH),
-            help="Path to openkinetics_demo_100.json.",
+            help="Path to an OpenKinetics release JSON.",
         )
         parser.add_argument(
             "--latest",

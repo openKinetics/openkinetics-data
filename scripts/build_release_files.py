@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build server-side release files and zip bundles from the demo sample."""
+"""Build server-side release files and zip bundles from a sample JSON."""
 
 import argparse
 import csv
