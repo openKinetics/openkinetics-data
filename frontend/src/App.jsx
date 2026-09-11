@@ -983,9 +983,11 @@ function DownloadStatsPanel({ stats, loading }) {
       </div>
       {expanded ? (
         <div className="download-stats-expanded">
-          <div className="included-stats-grid">
+          <div className="stats-overview-grid">
             <SequenceRowSummary counts={releaseCounts} />
             <KineticCoverageVenn counts={releaseCounts} />
+          </div>
+          <div className="stats-chart-grid">
             <StatsBarChart
               title="Verification statuses"
               values={stats?.verification_status_counts || {}}
@@ -1002,16 +1004,12 @@ function DownloadStatsPanel({ stats, loading }) {
               values={stats?.source_db_counts || {}}
               colors={["#477a6b", "#4f78a8", "#bd8435", "#9a625c", "#6f7995", "#70924d"]}
             />
-            <StatsKeyValueTable title="Included datapoint counts" values={counts} />
-            <DistributionTable
-              title="Enzyme datapoint distribution"
-              rows={stats?.distributions?.enzyme_datapoints || []}
-              countLabel="Enzymes"
-            />
-            <DistributionTable
-              title="Substrate datapoint distribution"
-              rows={stats?.distributions?.substrate_datapoints || []}
-              countLabel="Substrates"
+          </div>
+          <div className="stats-detail-grid">
+            <StatsKeyValueTable title="Included counts" values={counts} />
+            <CombinedDistributionTable
+              enzymeRows={stats?.distributions?.enzyme_datapoints || []}
+              substrateRows={stats?.distributions?.substrate_datapoints || []}
             />
           </div>
           <RejectedRowsPanel values={rejectedRows} />
@@ -1050,21 +1048,34 @@ function SequenceRowSummary({ counts }) {
         : undefined
     );
   if (mutantRows === undefined && wildTypeRows === undefined) return null;
+  const total = Number(counts.datapoints) || Number(mutantRows) + Number(wildTypeRows);
+  const mutantShare = total ? (Number(mutantRows) / total) * 100 : 0;
+  const wildTypeShare = total ? (Number(wildTypeRows) / total) * 100 : 0;
 
   return (
     <section className="stats-subsection sequence-row-summary">
       <div className="chart-heading">
         <h2>Sequence types</h2>
-        <span>{formatNumber(counts.datapoints)} rows</span>
+        <span>{formatNumber(total)} rows</span>
+      </div>
+      <div
+        className="sequence-split-bar"
+        role="img"
+        aria-label={`${mutantShare.toFixed(1)}% mutant rows and ${wildTypeShare.toFixed(1)}% wild type rows`}
+      >
+        <span className="sequence-split-mutant" style={{ width: `${mutantShare}%` }} />
+        <span className="sequence-split-wild" style={{ width: `${wildTypeShare}%` }} />
       </div>
       <div className="sequence-row-grid">
         <div>
-          <span>Mutant Rows</span>
+          <span><i className="sequence-dot mutant" aria-hidden="true" />Mutant Rows</span>
           <strong>{formatNumber(mutantRows)}</strong>
+          <small>{mutantShare.toFixed(1)}%</small>
         </div>
         <div>
-          <span>Wild Type Rows</span>
+          <span><i className="sequence-dot wild" aria-hidden="true" />Wild Type Rows</span>
           <strong>{formatNumber(wildTypeRows)}</strong>
+          <small>{wildTypeShare.toFixed(1)}%</small>
         </div>
       </div>
     </section>
@@ -1083,8 +1094,8 @@ function KineticCoverageVenn({ counts }) {
   if (!kcat && !km) return null;
 
   const regions = {
-    kcatOnly: { label: "Kcat only", value: kcatOnly, color: "#4f927e" },
-    both: { label: "Both Kcat and Km", value: both, color: "#477f83" },
+    kcatOnly: { label: "Kcat only", value: kcatOnly, color: "#a96555" },
+    both: { label: "Both Kcat and Km", value: both, color: "#6d7d91" },
     kmOnly: { label: "Km only", value: kmOnly, color: "#6e8fb5" }
   };
   const active = regions[activeKey];
@@ -1190,14 +1201,14 @@ function StatsBarChart({ title, values, colors }) {
                 "--bar-width": `${(value / maximum) * 100}%`
               }}
             >
-              <div className="stats-bar-label">
-                <span>{label}</span>
-                <strong>{formatNumber(value)}</strong>
-              </div>
+              <span className="stats-bar-label">{label}</span>
               <div className="stats-bar-track" aria-hidden="true">
                 <span />
               </div>
-              <small>{share}</small>
+              <div className="stats-bar-meta">
+                <strong>{formatNumber(value)}</strong>
+                <small>{share}</small>
+              </div>
             </div>
           );
         })}
@@ -1210,9 +1221,9 @@ function StatsKeyValueTable({ title, values }) {
   const entries = Object.entries(values || {});
   if (!entries.length) return null;
   return (
-    <section className="stats-subsection">
+    <section className="stats-subsection stats-count-table">
       <h2>{title}</h2>
-      <div className="stats-kv-grid">
+      <div className="stats-count-grid">
         {entries.map(([key, value]) => (
           <div key={key}>
             <span>{statLabel(key)}</span>
@@ -1252,23 +1263,32 @@ function RejectedRowsPanel({ values }) {
   );
 }
 
-function DistributionTable({ title, rows, countLabel }) {
-  if (!rows.length) return null;
+function CombinedDistributionTable({ enzymeRows, substrateRows }) {
+  const enzymeCounts = Object.fromEntries(enzymeRows.map((row) => [row.bucket, row.count]));
+  const substrateCounts = Object.fromEntries(substrateRows.map((row) => [row.bucket, row.count]));
+  const buckets = [...new Set([
+    ...enzymeRows.map((row) => row.bucket),
+    ...substrateRows.map((row) => row.bucket)
+  ])];
+  if (!buckets.length) return null;
+
   return (
     <section className="stats-subsection">
-      <h2>{title}</h2>
+      <h2>Datapoint distribution</h2>
       <table className="stats-table">
         <thead>
           <tr>
-            <th>Datapoints</th>
-            <th>{countLabel}</th>
+            <th>Datapoints per item</th>
+            <th>Enzymes</th>
+            <th>Substrates</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={`${title}-${row.bucket}`}>
-              <td>{row.bucket}</td>
-              <td>{formatNumber(row.count)}</td>
+          {buckets.map((bucket) => (
+            <tr key={bucket}>
+              <td>{bucket}</td>
+              <td>{formatNumber(enzymeCounts[bucket] || 0)}</td>
+              <td>{formatNumber(substrateCounts[bucket] || 0)}</td>
             </tr>
           ))}
         </tbody>
