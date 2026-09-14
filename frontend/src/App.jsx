@@ -784,10 +784,74 @@ function MeasurementDetailPanels({ row, embedded = false }) {
 }
 
 function ProteinSequencePanel({ row }) {
+  const [copied, setCopied] = useState(false);
   const sequence = row.sequence || {};
   const artifactGeneration = sequence.sequence_artifact_generation || {};
+  const sequenceText = String(sequence.sequence || "").replace(/\s+/g, "").toUpperCase();
+  const sequenceId = sequence.sequence_id || row.record_key || "openkinetics-sequence";
+  const uniprotId = row.enzyme.primary_uniprot_id || "uniprot_unknown";
+  const fastaText = useMemo(() => {
+    if (!sequenceText) return "";
+    const wrappedSequence = sequenceText.match(/.{1,80}/g)?.join("\n") || sequenceText;
+    return `>${sequenceId}|${uniprotId}|len=${sequenceText.length}\n${wrappedSequence}\n`;
+  }, [sequenceId, sequenceText, uniprotId]);
+  const fastaHref = useMemo(
+    () => `data:text/x-fasta;charset=utf-8,${encodeURIComponent(fastaText)}`,
+    [fastaText]
+  );
+  const fastaFilename = `${String(sequenceId).replace(/[^a-zA-Z0-9._-]+/g, "_")}.fasta`;
+
+  async function copySequence() {
+    if (!sequenceText) return;
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(sequenceText);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = sequenceText;
+        textArea.setAttribute("readonly", "");
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch (_error) {
+      setCopied(false);
+    }
+  }
+
   return (
-    <Panel title="Protein sequence">
+    <Panel
+      title="Protein sequence"
+      actions={(
+        <div className="sequence-actions">
+          <button
+            type="button"
+            className="icon-button subtle"
+            disabled={!sequenceText}
+            onClick={copySequence}
+            title="Copy amino-acid sequence"
+          >
+            <Copy size={15} aria-hidden="true" />
+            {copied ? "Copied" : "Copy sequence"}
+          </button>
+          <a
+            className={`icon-button subtle ${sequenceText ? "" : "is-disabled"}`}
+            href={sequenceText ? fastaHref : undefined}
+            download={fastaFilename}
+            aria-disabled={!sequenceText}
+            title="Download amino-acid sequence as FASTA"
+          >
+            <Download size={15} aria-hidden="true" />
+            Download FASTA
+          </a>
+        </div>
+      )}
+    >
       <dl className="key-values">
         <dt>Sequence ID</dt><dd>{sequence.sequence_id}</dd>
         <dt>UniProt</dt>
@@ -917,10 +981,17 @@ function SequenceHeatmap({ sequence, prediction }) {
   );
 }
 
-function Panel({ title, children }) {
+function Panel({ title, actions, children }) {
   return (
     <section className="panel">
-      <h2>{title}</h2>
+      {actions ? (
+        <div className="panel-title-row">
+          <h2>{title}</h2>
+          {actions}
+        </div>
+      ) : (
+        <h2>{title}</h2>
+      )}
       {children}
     </section>
   );

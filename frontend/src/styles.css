@@ -618,6 +618,36 @@ h3 {
   padding: 18px;
 }
 
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.panel-title-row h2 {
+  margin-bottom: 0;
+}
+
+.sequence-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.sequence-actions .icon-button {
+  white-space: nowrap;
+}
+
+.sequence-actions .icon-button:disabled,
+.sequence-actions .icon-button.is-disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
 .wide-panel {
   margin-bottom: 18px;
 }
@@ -1716,6 +1746,23 @@ h3 {
   font-size: 13px;
 }
 
+[data-theme="dark"] .download-details {
+  border-top-color: rgba(200, 188, 248, 0.2);
+}
+
+[data-theme="dark"] .download-details-body {
+  padding: 12px;
+  border: 1px solid rgba(200, 188, 248, 0.18);
+  border-radius: 7px;
+  background: rgba(8, 7, 27, 0.58);
+  color: rgba(239, 236, 252, 0.76);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+[data-theme="dark"] .download-details-body > p {
+  color: rgba(247, 245, 255, 0.88);
+}
+
 .download-details-body p {
   margin-bottom: 10px;
 }
@@ -1739,6 +1786,36 @@ h3 {
   font-size: 12px;
 }
 
+[data-theme="dark"] .format-table {
+  border: 1px solid rgba(200, 188, 248, 0.16);
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .format-table th,
+[data-theme="dark"] .format-table td {
+  padding: 9px 10px;
+  border-top: 1px solid rgba(200, 188, 248, 0.14);
+  border-right: 1px solid rgba(200, 188, 248, 0.12);
+}
+
+[data-theme="dark"] .format-table thead th {
+  border-top: 0;
+  background: rgba(155, 133, 240, 0.1);
+  color: #f7f5ff;
+}
+
+[data-theme="dark"] .format-table th:last-child,
+[data-theme="dark"] .format-table td:last-child {
+  border-right: 0;
+}
+
+[data-theme="dark"] .format-table tbody tr:nth-child(even) td {
+  background: rgba(155, 133, 240, 0.035);
+}
+
 .format-table th:first-child,
 .format-table td:first-child {
   width: 34%;
@@ -1748,6 +1825,10 @@ h3 {
 .format-table code,
 .field-list code {
   overflow-wrap: anywhere;
+}
+
+[data-theme="dark"] .format-table code {
+  color: #d8cdfc;
 }
 
 .field-list {
@@ -1784,6 +1865,11 @@ h3 {
 
 .format-notes li {
   margin-bottom: 5px;
+}
+
+[data-theme="dark"] .format-notes {
+  padding-top: 10px;
+  border-top: 1px solid rgba(200, 188, 248, 0.14);
 }
 
 .text-page {

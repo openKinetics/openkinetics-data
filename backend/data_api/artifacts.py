@@ -315,34 +315,163 @@ FORMAT_DETAILS = {
     ),
     "pseq2sites_binding_sites": pseq2sites_bundle_details(),
     "bundle_measurements": details(
-        "ZIP archive containing measurement tables and release metadata.",
+        "Four-file ZIP containing the release manifest, the same normalized measurement rows in JSONL and CSV form, and release checksums.",
         [
-            file_detail("manifest.json", "JSON object", "Release metadata."),
-            file_detail("measurements.jsonl.gz", "Gzip-compressed JSON Lines", "Flat measurement records."),
-            file_detail("measurements.csv.gz", "Gzip-compressed CSV", "Flat measurement table."),
-            file_detail("checksums.sha256", "Plain text", "SHA-256 checksums when present."),
+            file_detail(
+                "manifest.json",
+                "JSON object",
+                "One release-level object with the release ID, title, generation time, source checksum, counts, attribution, schema, and download notes.",
+            ),
+            file_detail(
+                "measurements.jsonl.gz",
+                "Gzip-compressed JSON Lines",
+                "One normalized measurement object per line, including stable record/measurement/sequence/substrate/pair IDs; enzyme, EC, organism, and variant identity; kinetic values and units; assay conditions; provenance; literature counts; and evidence status.",
+            ),
+            file_detail(
+                "measurements.csv.gz",
+                "Gzip-compressed CSV",
+                "The same normalized measurements as a UTF-8 table with one header row and one measurement per subsequent row.",
+            ),
+            file_detail(
+                "checksums.sha256",
+                "Plain text",
+                "One '<64-character SHA-256>  <release-relative path>' entry per checksummed release artifact.",
+            ),
         ],
         MEASUREMENT_FIELDS,
+        [
+            "measurements.jsonl.gz and measurements.csv.gz expose the same columns in different serializations.",
+            "record_key joins to record_details.jsonl.gz and the split CSVs; sequence_id and substrate_id join to their metadata tables.",
+        ],
     ),
     "bundle_ml_ready": details(
-        "ZIP archive containing tabular measurements, sequence data, substrate data, and splits.",
+        "Nine-file ZIP with normalized measurements, protein sequences, substrate metadata, and four ready-to-use train/validation/test assignment tables.",
         [
-            file_detail("manifest.json", "JSON object", "Release metadata."),
-            file_detail("measurements.jsonl.gz", "Gzip-compressed JSON Lines", "Flat measurement records."),
-            file_detail("sequences.fasta", "FASTA", "Protein sequences keyed by sequence_id."),
-            file_detail("sequences.jsonl.gz", "Gzip-compressed JSON Lines", "Protein sequence metadata with sequences."),
-            file_detail("substrates.jsonl.gz", "Gzip-compressed JSON Lines", "Substrate metadata."),
-            file_detail("splits/*.csv", "CSV", "Random, sequence-exclusive, substrate-exclusive, and pair-exclusive splits."),
+            file_detail(
+                "manifest.json",
+                "JSON object",
+                "Release ID, generation metadata, source checksum, counts, attribution, schema, and download notes.",
+            ),
+            file_detail(
+                "measurements.jsonl.gz",
+                "Gzip-compressed JSON Lines",
+                "One normalized kinetic measurement per line with IDs, enzyme/substrate identity, kinetic values and units, assay conditions, provenance, and evidence fields.",
+            ),
+            file_detail(
+                "sequences.fasta",
+                "FASTA",
+                "One protein entry per sequence_id; headers use '>{sequence_id}|{primary_uniprot_id}|len={length}' and sequences wrap at 80 characters.",
+            ),
+            file_detail(
+                "sequences.jsonl.gz",
+                "Gzip-compressed JSON Lines",
+                "One sequence per line with sequence_id, full amino-acid sequence, UniProt/source metadata, variant identity, and artifact-input/truncation metadata.",
+            ),
+            file_detail(
+                "substrates.jsonl.gz",
+                "Gzip-compressed JSON Lines",
+                "One substrate per line with substrate_id, names, PubChem identifiers, SMILES variants, InChIKey, formula, and source metadata.",
+            ),
+            file_detail(
+                "splits/random.csv",
+                "CSV",
+                "One row per measurement with its deterministic random train, val, or test assignment.",
+            ),
+            file_detail(
+                "splits/sequence_exclusive.csv",
+                "CSV",
+                "One row per measurement; every sequence_id is confined to a single train, val, or test partition.",
+            ),
+            file_detail(
+                "splits/substrate_exclusive.csv",
+                "CSV",
+                "One row per measurement; every substrate_id is confined to a single train, val, or test partition.",
+            ),
+            file_detail(
+                "splits/pair_exclusive.csv",
+                "CSV",
+                "One row per measurement; every sequence-substrate pair_id is confined to a single train, val, or test partition.",
+            ),
+        ],
+        notes=[
+            "All four split CSVs use these columns: record_key, measurement_key, measurement_id, sequence_id, substrate_id, pair_id, split_family, split.",
+            "Join measurements to sequences with sequence_id and to substrates with substrate_id.",
+            "This archive does not contain record_details.jsonl.gz, checksums, embeddings, or Pseq2Sites arrays.",
         ],
     ),
     "bundle_complete": details(
-        "ZIP archive containing release metadata and tabular data files, excluding bulk embeddings.",
+        "Thirteen-file ZIP containing every standard release metadata and data table produced before model artifacts; generated embeddings and Pseq2Sites arrays are distributed separately.",
         [
             file_detail(
-                "manifest.json, measurements, sequences, substrates, and splits",
-                "Mixed release files",
-                "Metadata and ML-ready tabular files; embeddings are downloaded separately with generated commands.",
-            )
+                "manifest.json",
+                "JSON object",
+                "Release ID, title, generation metadata, source checksum, counts, attribution, schema, and download notes.",
+            ),
+            file_detail(
+                "expected_generated_artifacts.json",
+                "JSON object",
+                "Expected embedding and Pseq2Sites source locations, file patterns, join key, metadata paths, and the long-sequence truncation policy.",
+            ),
+            file_detail(
+                "measurements.jsonl.gz",
+                "Gzip-compressed JSON Lines",
+                "One normalized measurement per line with identifiers, enzyme/substrate identity, kinetics, assay conditions, provenance, and evidence.",
+            ),
+            file_detail(
+                "measurements.csv.gz",
+                "Gzip-compressed CSV",
+                "The normalized measurement table as UTF-8 CSV with a header row.",
+            ),
+            file_detail(
+                "record_details.jsonl.gz",
+                "Gzip-compressed JSON Lines",
+                "One full nested source record per line, including enzyme, sequence, substrate, enzyme-substrate pair, measurements, assay conditions, provenance, evidence, and split objects.",
+            ),
+            file_detail(
+                "sequences.fasta",
+                "FASTA",
+                "Protein sequences keyed by sequence_id with UniProt ID and sequence length in each header.",
+            ),
+            file_detail(
+                "sequences.jsonl.gz",
+                "Gzip-compressed JSON Lines",
+                "Unique sequences with the full amino-acid string, UniProt/source data, variant identity, and artifact-input metadata.",
+            ),
+            file_detail(
+                "substrates.jsonl.gz",
+                "Gzip-compressed JSON Lines",
+                "Unique substrates with names, PubChem IDs, SMILES variants, InChIKey, molecular formula, and source data.",
+            ),
+            file_detail(
+                "splits/random.csv",
+                "CSV",
+                "Per-measurement deterministic random train/val/test assignments.",
+            ),
+            file_detail(
+                "splits/sequence_exclusive.csv",
+                "CSV",
+                "Per-measurement assignments that keep each sequence_id in one partition.",
+            ),
+            file_detail(
+                "splits/substrate_exclusive.csv",
+                "CSV",
+                "Per-measurement assignments that keep each substrate_id in one partition.",
+            ),
+            file_detail(
+                "splits/pair_exclusive.csv",
+                "CSV",
+                "Per-measurement assignments that keep each sequence-substrate pair_id in one partition.",
+            ),
+            file_detail(
+                "checksums.sha256",
+                "Plain text",
+                "SHA-256 digests paired with release-relative artifact paths for integrity verification.",
+            ),
+        ],
+        notes=[
+            "The archive contains standard release data, not files under downloads/, artifact_indexes/, artifact_reports/, or raw model-artifact directories.",
+            "Use record_key across measurement, detail, and split files; use sequence_id and substrate_id for metadata joins.",
+            "Residue embedding arrays are downloaded with the model-specific command panels; Pseq2Sites arrays are in their own score bundle.",
         ],
     ),
 }
@@ -509,7 +638,7 @@ ARTIFACT_DEFINITIONS = [
         "artifact_key": "bundle_measurements",
         "family": "bundles",
         "label": "Measurements bundle",
-        "description": "Zip bundle containing JSONL and CSV measurement tables.",
+        "description": "Manifest, checksums, and the complete normalized measurement table in both JSONL and CSV formats.",
         "relative_path": "downloads/openkinetics-demo-measurements.zip",
         "content_type": "application/zip",
     },
@@ -517,7 +646,7 @@ ARTIFACT_DEFINITIONS = [
         "artifact_key": "bundle_ml_ready",
         "family": "bundles",
         "label": "ML-ready bundle",
-        "description": "Zip bundle containing measurements, sequences, substrates, and splits.",
+        "description": "Measurements, sequence and substrate metadata, FASTA sequences, and four explicit train/validation/test split tables.",
         "relative_path": "downloads/openkinetics-demo-ml-ready.zip",
         "content_type": "application/zip",
     },
@@ -525,7 +654,7 @@ ARTIFACT_DEFINITIONS = [
         "artifact_key": "bundle_complete",
         "family": "bundles",
         "label": "Complete release bundle",
-        "description": "Zip bundle containing release metadata and tabular data files. Embeddings are downloaded separately with commands.",
+        "description": "All standard release metadata, flat and nested measurements, sequences, substrates, checksums, and split tables; model arrays remain separate.",
         "relative_path": "downloads/openkinetics-demo-complete.zip",
         "content_type": "application/zip",
     },

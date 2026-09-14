@@ -1,5 +1,6 @@
 """JSON serializers for the public API."""
 
+from .artifacts import FORMAT_DETAILS
 from .sequence_artifacts import (
     pseq2sites_prediction_payload,
     sequence_artifact_generation_metadata,
@@ -199,6 +200,10 @@ def release_payload(release, include_manifest=False):
 
 
 def artifact_payload(artifact):
+    metadata = dict(artifact.metadata or {})
+    canonical_format_details = FORMAT_DETAILS.get(artifact.artifact_key)
+    if canonical_format_details:
+        metadata["format_details"] = canonical_format_details
     return {
         "artifact_key": artifact.artifact_key,
         "family": artifact.family,
@@ -210,5 +215,5 @@ def artifact_payload(artifact):
         "size_bytes": artifact.size_bytes,
         "sha256": artifact.sha256,
         "available": artifact.available,
-        "metadata": artifact.metadata,
+        "metadata": metadata,
     }
