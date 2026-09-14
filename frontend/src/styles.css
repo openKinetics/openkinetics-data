@@ -544,6 +544,133 @@ h3 {
   color: #555;
 }
 
+.status-accepted,
+.status-accepted_identity_only {
+  background: #e5f4ee;
+  color: #0e5a49;
+}
+
+.status-accepted_identity_only {
+  background: #e4f1f0;
+  color: #285f5b;
+}
+
+.status-further_checks {
+  background: #fff4d8;
+  color: var(--amber);
+}
+
+.status-unreviewed_or_excluded {
+  background: #f1f1f1;
+  color: #555;
+}
+
+[data-theme="dark"] .status-accepted,
+[data-theme="dark"] .status-accepted_identity_only {
+  background: rgba(46, 160, 90, 0.18);
+  color: #8fe6b0;
+}
+
+[data-theme="dark"] .status-accepted_identity_only {
+  background: rgba(84, 127, 115, 0.24);
+  color: #a9d9cc;
+}
+
+[data-theme="dark"] .status-further_checks {
+  background: rgba(138, 90, 0, 0.2);
+  color: #f0c869;
+}
+
+[data-theme="dark"] .status-unreviewed_or_excluded {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.status-column-heading,
+.chart-title-with-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.review-status-info {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+}
+
+.review-status-info-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: currentColor;
+  cursor: help;
+}
+
+.review-status-info-button:hover,
+.review-status-info-button:focus-visible {
+  background: var(--row-hover);
+  color: var(--accent-2);
+  outline: none;
+}
+
+.review-status-tooltip {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 7px);
+  right: 0;
+  display: none;
+  width: min(390px, calc(100vw - 40px));
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+}
+
+.chart-title-with-info .review-status-tooltip {
+  right: auto;
+  left: -105px;
+}
+
+.review-status-info:hover .review-status-tooltip,
+.review-status-info:focus-within .review-status-tooltip {
+  display: grid;
+  gap: 10px;
+}
+
+.review-status-tooltip-title {
+  font-size: 14px;
+}
+
+.review-status-definition {
+  display: grid;
+  gap: 2px;
+}
+
+.review-status-definition > span,
+.review-status-note {
+  color: var(--muted);
+}
+
+.review-status-note {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
 [data-theme="dark"] .status-unverified {
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.65);

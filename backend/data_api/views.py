@@ -1,7 +1,7 @@
 from collections import Counter, defaultdict
 
 from django.core.paginator import Paginator
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 
@@ -48,10 +48,51 @@ def parse_bool(value):
     return None
 
 
+REVIEW_STATUS_LABELS = {
+    "accepted": "Accepted",
+    "accepted_identity_only": "Accepted (identity only)",
+    "further_checks": "Further checks",
+    "unreviewed_or_excluded": "Unreviewed or excluded",
+}
+
+ACCEPTED_VERIFICATION_STATUSES = ("corrected", "verified")
+UNREVIEWED_VERIFICATION_STATUSES = ("unverified", "mathematically_inferred", "disputed")
+
+
+def review_status_filter(review_status):
+    if review_status == "accepted":
+        return Q(
+            verification_status__in=ACCEPTED_VERIFICATION_STATUSES,
+            has_literature_id=True,
+        )
+    if review_status == "accepted_identity_only":
+        return Q(
+            verification_status__in=ACCEPTED_VERIFICATION_STATUSES,
+            has_literature_id=False,
+        )
+    if review_status == "further_checks":
+        return Q(verification_status="manual_review_required")
+    if review_status == "unreviewed_or_excluded":
+        return Q(verification_status__in=UNREVIEWED_VERIFICATION_STATUSES)
+    return None
+
+
+def review_status_counts(measurements):
+    return {
+        key: measurements.filter(review_status_filter(key)).count()
+        for key in REVIEW_STATUS_LABELS
+    }
+
+
 def apply_measurement_filters(queryset, params):
     q = (params.get("q") or "").strip()
     if q:
         queryset = queryset.filter(search_text__icontains=q.lower())
+
+    requested_review_status = (params.get("review_status") or "").strip()
+    review_filter = review_status_filter(requested_review_status)
+    if review_filter is not None:
+        queryset = queryset.filter(review_filter)
 
     enzyme_identity = parse_bool(params.get("enzyme_identity"))
     if enzyme_identity is True:
@@ -223,6 +264,7 @@ def release_download_stats(release):
             .annotate(count=Count("id"))
             .order_by("verification_status")
         ),
+        "review_status_counts": review_status_counts(measurements),
         "eligibility": manifest.get("eligibility") or {},
         "distributions": {
             "enzyme_datapoints": bucketed_distribution(enzyme_rows),
@@ -413,6 +455,15 @@ def facets(_request):
             .annotate(count=Count("id"))
             .order_by("verification_status")
         ),
+        "review_statuses": [
+            {
+                "review_status": key,
+                "label": label,
+                "count": count,
+            }
+            for key, label in REVIEW_STATUS_LABELS.items()
+            if (count := measurements.filter(review_status_filter(key)).count())
+        ],
         "evidence_tiers": list(
             measurements.exclude(evidence_confidence_tier="")
             .values("evidence_confidence_tier")

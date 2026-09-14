@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useId, useMemo, useState } from "react";
 import { Link, Navigate, NavLink, Route, Routes, useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FileText,
   FlaskConical,
+  Info,
   Moon,
   Search,
   Sun
@@ -44,6 +45,106 @@ const openKineticsBibtex = String.raw`@unpublished{alwer2026accessing,
   note = {Unpublished manuscript},
   year = {2026}
 }`;
+
+const reviewStatuses = {
+  accepted: {
+    label: "Accepted",
+    description: "CatLog checked the kinetic value and enzyme identity. The value was kept as reported or updated from a saved source."
+  },
+  accepted_identity_only: {
+    label: "Accepted (identity only)",
+    description: "The protein identity and sequence were checked, but CatLog has no paper reference for the kinetic value."
+  },
+  further_checks: {
+    label: "Further checks",
+    description: "Review is unfinished. The sequence, substrate structure, or match to the original measurement still needs checking."
+  },
+  unreviewed_or_excluded: {
+    label: "Unreviewed or excluded",
+    description: "The row is unreviewed, was calculated from other reported values, or remains disputed."
+  }
+};
+
+const evidenceClasses = [
+  {
+    label: "Paper evidence",
+    description: "A value and its table or measurement excerpt are saved from the paper. This alone does not mean Accepted."
+  },
+  {
+    label: "Source note",
+    description: "A database note is saved; no paper-value excerpt is attached."
+  }
+];
+
+function reviewStatusKey(rowOrStatus) {
+  const row = typeof rowOrStatus === "string"
+    ? { verification_status: rowOrStatus }
+    : rowOrStatus || {};
+  const status = row.verification_status;
+
+  if (status === "accepted" || status === "accepted_identity_only"
+    || status === "further_checks" || status === "unreviewed_or_excluded") {
+    return status;
+  }
+  if (status === "corrected" || status === "verified") {
+    const hasNoPaperReference = row.has_literature_id === false
+      || row.paper_grounding_status === "no_literature_id";
+    return hasNoPaperReference ? "accepted_identity_only" : "accepted";
+  }
+  if (status === "manual_review_required") return "further_checks";
+  if (status === "unverified" || status === "mathematically_inferred" || status === "disputed") {
+    return "unreviewed_or_excluded";
+  }
+  return "unreviewed_or_excluded";
+}
+
+function reviewStatusLabel(rowOrStatus) {
+  return reviewStatuses[reviewStatusKey(rowOrStatus)].label;
+}
+
+function normalizedEvidenceSummary(evidence) {
+  const summary = evidence?.compact_evidence_summary || "";
+  return summary.replace(
+    /^Verification: .*? Evidence tier:/,
+    `Review status: ${reviewStatusLabel(evidence)}. Evidence tier:`
+  );
+}
+
+function ReviewStatusPill({ row }) {
+  const key = reviewStatusKey(row);
+  return <span className={`status-pill status-${key}`}>{reviewStatuses[key].label}</span>;
+}
+
+function ReviewStatusInfo() {
+  const tooltipId = useId();
+  return (
+    <span className="review-status-info">
+      <button
+        type="button"
+        className="review-status-info-button"
+        aria-label="About review statuses"
+        aria-describedby={tooltipId}
+      >
+        <Info size={15} aria-hidden="true" />
+      </button>
+      <span className="review-status-tooltip" id={tooltipId} role="tooltip">
+        <strong className="review-status-tooltip-title">Review status</strong>
+        {[...Object.values(reviewStatuses), ...evidenceClasses].map((item) => (
+          <span className="review-status-definition" key={item.label}>
+            <strong>{item.label}</strong>
+            <span>{item.description}</span>
+          </span>
+        ))}
+        <span className="review-status-note">
+          CatLog uses automated checks. A lab member reviews cases that need a decision.
+        </span>
+        <span className="review-status-note">
+          Status describes our review, not the paper&apos;s quality.
+        </span>
+      </span>
+    </span>
+  );
+}
 
 function formatNumber(value) {
   if (value === null || value === undefined || value === "") return "n/a";
@@ -276,7 +377,7 @@ function SearchPage() {
     q: "",
     ec_class: "",
     source_db: "",
-    verification_status: "",
+    review_status: "",
     has_kcat: "",
     has_km: "",
     wild_type: ""
@@ -348,13 +449,13 @@ function SearchPage() {
           <label>
             Status
             <select
-              value={filters.verification_status}
-              onChange={(event) => updateFilter("verification_status", event.target.value)}
+              value={filters.review_status}
+              onChange={(event) => updateFilter("review_status", event.target.value)}
             >
               <option value="">All</option>
-              {(facetData.verification_statuses || []).map((row) => (
-                <option key={row.verification_status} value={row.verification_status}>
-                  {row.verification_status} ({row.count})
+              {(facetData.review_statuses || []).map((row) => (
+                <option key={row.review_status} value={row.review_status}>
+                  {row.label} ({row.count})
                 </option>
               ))}
             </select>
@@ -477,7 +578,12 @@ function MeasurementTable({ loading, data }) {
             <th>kcat</th>
             <th>Km</th>
             <th>UniProt</th>
-            <th>Status</th>
+            <th>
+              <span className="status-column-heading">
+                Status
+                <ReviewStatusInfo />
+              </span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -517,9 +623,7 @@ function MeasurementTable({ loading, data }) {
                   <td>{formatMetric(row.km)}</td>
                   <td>{formatText(row.primary_uniprot_id)}</td>
                   <td>
-                    <span className={`status-pill status-${row.verification_status}`}>
-                      {row.verification_status}
-                    </span>
+                    <ReviewStatusPill row={row} />
                   </td>
                 </tr>
                 {measurementExpanded ? (
@@ -588,7 +692,12 @@ function EnzymeMeasurementsPanel({ row }) {
                 <th>kcat</th>
                 <th>Km</th>
                 <th>Variant</th>
-                <th>Status</th>
+                <th>
+                  <span className="status-column-heading">
+                    Status
+                    <ReviewStatusInfo />
+                  </span>
+                </th>
                 <th>Record</th>
               </tr>
             </thead>
@@ -641,9 +750,7 @@ function CompactMeasurementRow({ measurement, expanded, onToggle }) {
         <td>{formatMetric(measurement.km)}</td>
         <td>{measurement.is_mutant ? formatText(measurement.mutation_signature) : "Wild type"}</td>
         <td>
-          <span className={`status-pill status-${measurement.verification_status}`}>
-            {measurement.verification_status}
-          </span>
+          <ReviewStatusPill row={measurement} />
         </td>
         <td><code>{measurement.record_key}</code></td>
       </tr>
@@ -691,9 +798,7 @@ function RecordPage() {
           <h1>{row.enzyme.name}</h1>
           <p>{row.substrate.name} · {row.enzyme.organism} · EC {row.enzyme.ec_number}</p>
         </div>
-        <span className={`status-pill status-${row.evidence.verification_status}`}>
-          {row.evidence.verification_status}
-        </span>
+        <ReviewStatusPill row={row.evidence} />
       </div>
 
       <MeasurementDetailPanels row={row} />
@@ -725,7 +830,7 @@ function MeasurementDetailPanels({ row, embedded = false }) {
           <dt>Paper grounding</dt><dd>{row.evidence.paper_grounding_status}</dd>
           <dt>Literature counts</dt><dd>{row.provenance.pmid_count} PMID · {row.provenance.doi_count} DOI</dd>
         </dl>
-        <p className="evidence-note">{row.evidence.compact_evidence_summary}</p>
+        <p className="evidence-note">{normalizedEvidenceSummary(row.evidence)}</p>
       </Panel>
 
       <ProteinSequencePanel row={row} />
@@ -1061,14 +1166,20 @@ function DownloadStatsPanel({ stats, loading }) {
           </div>
           <div className="stats-chart-grid">
             <StatsBarChart
-              title="Verification statuses"
-              values={stats?.verification_status_counts || {}}
+              title={(
+                <span className="chart-title-with-info">
+                  Review status
+                  <ReviewStatusInfo />
+                </span>
+              )}
+              ariaLabel="Review status"
+              values={stats?.review_status_counts || {}}
+              labeler={reviewStatusLabel}
               colors={{
-                corrected: "#547f73",
-                manual_review_required: "#d39b3c",
-                mathematically_inferred: "#4f78a8",
-                unverified: "#89918e",
-                verified: "#2f8a68"
+                accepted: "#2f8a68",
+                accepted_identity_only: "#547f73",
+                further_checks: "#d39b3c",
+                unreviewed_or_excluded: "#89918e"
               }}
             />
             <StatsBarChart
@@ -1240,7 +1351,7 @@ function chartLabel(key) {
   return labels[key] || statLabel(key);
 }
 
-function StatsBarChart({ title, values, colors }) {
+function StatsBarChart({ title, ariaLabel, values, colors, labeler = chartLabel }) {
   const entries = Object.entries(values || {})
     .map(([key, value]) => [key, Number(value) || 0])
     .sort((left, right) => right[1] - left[1]);
@@ -1255,9 +1366,9 @@ function StatsBarChart({ title, values, colors }) {
         <h2>{title}</h2>
         <span>{formatNumber(total)} rows</span>
       </div>
-      <div className="stats-bar-chart" role="list" aria-label={title}>
+      <div className="stats-bar-chart" role="list" aria-label={ariaLabel || title}>
         {entries.map(([key, value], index) => {
-          const label = chartLabel(key);
+          const label = labeler(key);
           const share = total ? `${((value / total) * 100).toFixed(1)}%` : "0%";
           return (
             <div
@@ -1726,6 +1837,7 @@ print(latest["manifest"]["download_note"])`
           { name: "has_kcat, has_km, wild_type", values: "true or false", description: "Boolean filters for reported metrics and sequence type." },
           { name: "ec_number, ec_number_exact, ec_class", values: "text", description: "EC prefix, exact EC, or EC top-level class filtering." },
           { name: "organism, organism_exact, substrate", values: "text", description: "Organism and substrate text filters." },
+          { name: "review_status", values: "accepted, accepted_identity_only, further_checks, unreviewed_or_excluded", description: "Filter by the normalized public review status." },
           { name: "enzyme_identity", values: "true", description: "Use with enzyme_name, ec_number_exact, organism_exact, and optional uniprot for exact enzyme drilldown." }
         ]
       },
