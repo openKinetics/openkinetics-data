@@ -242,7 +242,8 @@ function Layout() {
           CatLog data from <a href={chowdhuryLabUrl}>Chowdhury Lab</a> collaborators.
         </span>
         <a href={catlogUrl}>CatLog static browser</a>
-        <a href="https://predictor.openkinetics.org">Kinetics predictor</a>
+        <a href="https://predictor.openkinetics.org">Kinetic Predictor</a>
+        <a href="https://openkinetics.org">OpenKinetics Index</a>
       </footer>
     </div>
   );
