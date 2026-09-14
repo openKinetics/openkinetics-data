@@ -10,7 +10,9 @@ import {
   ExternalLink,
   FileText,
   FlaskConical,
-  Search
+  Moon,
+  Search,
+  Sun
 } from "lucide-react";
 import {
   fetchDownloads,
@@ -21,6 +23,7 @@ import {
   fetchReleases,
   fetchStats
 } from "./api";
+import { useTheme } from "./context/ThemeContext.jsx";
 
 const catlogUrl = "https://chowdhurylab.github.io/tools/catlog-static/";
 const chowdhuryLabUrl = "https://chowdhurylab.github.io/";
@@ -179,6 +182,30 @@ function useAsync(factory, deps) {
   return state;
 }
 
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const label = theme === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  return (
+    <button
+      type="button"
+      className="theme-toggle-btn"
+      onClick={toggleTheme}
+      aria-label={label}
+      title={label}
+    >
+      <span className="theme-toggle-track">
+        <span className="theme-toggle-thumb">
+          {theme === "dark" ? (
+            <Sun size={16} aria-hidden="true" />
+          ) : (
+            <Moon size={15} aria-hidden="true" />
+          )}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 function Layout() {
   return (
     <div className="app-shell">
@@ -187,13 +214,16 @@ function Layout() {
           <Database size={22} aria-hidden="true" />
           <span>OpenKinetics Data</span>
         </Link>
-        <nav className="navlinks" aria-label="Primary navigation">
-          <NavLink to="/downloads">Downloads</NavLink>
-          <NavLink to="/search">Search</NavLink>
-          <NavLink to="/releases">Releases</NavLink>
-          <NavLink to="/citation">Citation</NavLink>
-          <NavLink to="/api-docs">API</NavLink>
-        </nav>
+        <div className="topbar-end">
+          <nav className="navlinks" aria-label="Primary navigation">
+            <NavLink to="/downloads">Downloads</NavLink>
+            <NavLink to="/search">Search</NavLink>
+            <NavLink to="/releases">Releases</NavLink>
+            <NavLink to="/citation">Citation</NavLink>
+            <NavLink to="/api-docs">API</NavLink>
+          </nav>
+          <ThemeToggle />
+        </div>
       </header>
       <AttributionBanner />
       <main>
