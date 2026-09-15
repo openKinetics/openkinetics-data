@@ -99,6 +99,38 @@ select {
   white-space: nowrap;
 }
 
+.topbar-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.product-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.product-links a {
+  padding: 6px 8px;
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.product-links a:hover,
+.product-links a:focus-visible {
+  background: var(--surface-2);
+  color: var(--ink);
+  text-decoration: none;
+}
+
 .navlinks {
   display: flex;
   align-items: center;
@@ -2022,6 +2054,19 @@ h3 {
     align-items: flex-start;
     flex-direction: column;
     padding: 14px 18px;
+  }
+
+  .topbar-brand-group,
+  .topbar-end {
+    width: 100%;
+  }
+
+  .topbar-brand-group {
+    flex-wrap: wrap;
+  }
+
+  .topbar-end {
+    justify-content: space-between;
   }
 
   .catlog-banner,

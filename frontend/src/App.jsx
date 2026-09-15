@@ -311,10 +311,16 @@ function Layout() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <Link className="brand" to="/downloads">
-          <Database size={22} aria-hidden="true" />
-          <span>OpenKinetics Data</span>
-        </Link>
+        <div className="topbar-brand-group">
+          <Link className="brand" to="/downloads">
+            <Database size={22} aria-hidden="true" />
+            <span>OpenKinetics Data</span>
+          </Link>
+          <nav className="product-links" aria-label="OpenKinetics products">
+            <a href="https://predictor.openkinetics.org/">Kinetic Predictor</a>
+            <a href="https://openkinetics.org/">OpenKinetics Index</a>
+          </nav>
+        </div>
         <div className="topbar-end">
           <nav className="navlinks" aria-label="Primary navigation">
             <NavLink to="/downloads">Downloads</NavLink>
@@ -343,8 +349,6 @@ function Layout() {
           CatLog data from <a href={chowdhuryLabUrl}>Chowdhury Lab</a> collaborators.
         </span>
         <a href={catlogUrl}>CatLog static browser</a>
-        <a href="https://predictor.openkinetics.org">Kinetic Predictor</a>
-        <a href="https://openkinetics.org">OpenKinetics Index</a>
       </footer>
     </div>
   );
