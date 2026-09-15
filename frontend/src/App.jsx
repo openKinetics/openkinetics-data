@@ -26,7 +26,7 @@ import {
 } from "./api";
 import { useTheme } from "./context/ThemeContext.jsx";
 
-const catlogUrl = "https://chowdhurylab.github.io/tools/catlog-static/";
+const catlogUrl = "https://chowdhurylab.github.io/tools/catlog-latest.html";
 const chowdhuryLabUrl = "https://chowdhurylab.github.io/";
 const openKineticsUrl = "https://openkinetics.org/";
 const realKcatDoi = "https://doi.org/10.1101/2025.02.10.637555";

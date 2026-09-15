@@ -28,7 +28,7 @@ Sajeevan et al., Robust Prediction of Enzyme Variant Kinetics with RealKcat,
 bioRxiv 2025, DOI: https://doi.org/10.1101/2025.02.10.637555
 
 CatLog static browser:
-https://chowdhurylab.github.io/tools/catlog-static/
+https://chowdhurylab.github.io/tools/catlog-latest.html
 
 ## Local Backend
 

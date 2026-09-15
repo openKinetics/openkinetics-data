@@ -14,7 +14,7 @@ https://doi.org/10.1101/2025.02.10.637555
 
 It also links to the [Chowdhury Lab](https://chowdhurylab.github.io/) CatLog browser:
 
-https://chowdhurylab.github.io/tools/catlog-static/
+https://chowdhurylab.github.io/tools/catlog-latest.html
 
 ## Stack
 
