@@ -257,6 +257,13 @@ class Command(BaseCommand):
                 "attribution": manifest.get("attribution") or {},
                 "source_sha256": manifest.get("source", {}).get("input_sha256") or "",
                 "is_latest": bool(options["latest"]),
+                # Re-importing the same release changes its rows. Mark any old
+                # precomputation unusable until the publish flow rebuilds it.
+                "precomputed_stats": {},
+                "precomputed_facets": {},
+                "precomputed_download_stats": {},
+                "precomputation_version": 0,
+                "precomputed_at": None,
             },
         )
         if options["latest"]:

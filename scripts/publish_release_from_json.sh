@@ -7,7 +7,8 @@ Usage:
   scripts/publish_release_from_json.sh /path/to/openkinetics_release.json [options]
 
 Builds release files, indexes existing sequence artifacts, imports the release
-into Django as latest, and starts/restarts the website.
+into Django as latest, precomputes its API stats/facets/download stats, and
+starts/restarts the website.
 
 Options:
   --public-api-base-url URL   Public API base used in generated embedding commands.
@@ -383,6 +384,11 @@ if [[ "$skip_import" -eq 0 && "$dry_run" -eq 0 ]]; then
     python backend/manage.py import_release \
       --sample "$container_json" \
       --latest
+
+  run_compose run --rm \
+    backend \
+    python backend/manage.py precompute_release_data \
+      --release-id "$release_id"
 fi
 
 if [[ "$skip_up" -eq 0 && "$dry_run" -eq 0 ]]; then

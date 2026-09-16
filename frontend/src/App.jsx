@@ -65,17 +65,6 @@ const reviewStatuses = {
   }
 };
 
-const evidenceClasses = [
-  {
-    label: "Paper evidence",
-    description: "A value and its table or measurement excerpt are saved from the paper. This alone does not mean Accepted."
-  },
-  {
-    label: "Source note",
-    description: "A database note is saved; no paper-value excerpt is attached."
-  }
-];
-
 function reviewStatusKey(rowOrStatus) {
   const row = typeof rowOrStatus === "string"
     ? { verification_status: rowOrStatus }
@@ -129,7 +118,7 @@ function ReviewStatusInfo() {
       </button>
       <span className="review-status-tooltip" id={tooltipId} role="tooltip">
         <strong className="review-status-tooltip-title">Review status</strong>
-        {[...Object.values(reviewStatuses), ...evidenceClasses].map((item) => (
+        {Object.values(reviewStatuses).map((item) => (
           <span className="review-status-definition" key={item.label}>
             <strong>{item.label}</strong>
             <span>{item.description}</span>

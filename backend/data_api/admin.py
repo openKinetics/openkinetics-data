@@ -5,7 +5,22 @@ from .models import Measurement, Release, ReleaseArtifact, Sequence, SplitAssign
 
 @admin.register(Release)
 class ReleaseAdmin(admin.ModelAdmin):
-    list_display = ("release_id", "title", "record_count", "is_latest", "generated_at")
+    list_display = (
+        "release_id",
+        "title",
+        "record_count",
+        "is_latest",
+        "precomputation_version",
+        "precomputed_at",
+        "generated_at",
+    )
+    readonly_fields = (
+        "precomputed_stats",
+        "precomputed_facets",
+        "precomputed_download_stats",
+        "precomputation_version",
+        "precomputed_at",
+    )
     search_fields = ("release_id", "title")
 
 

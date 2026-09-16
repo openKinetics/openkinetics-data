@@ -39,6 +39,7 @@ pip install -r requirements.txt
 python backend/manage.py migrate
 python scripts/build_release_files.py
 python backend/manage.py import_release
+python backend/manage.py precompute_release_data
 python backend/manage.py runserver 8001
 ```
 
@@ -89,6 +90,7 @@ docker compose run --rm backend python backend/manage.py migrate
 docker compose run --rm backend python scripts/build_release_files.py
 docker compose run --rm backend python scripts/build_sequence_artifact_bundles.py
 docker compose run --rm backend python backend/manage.py import_release
+docker compose run --rm backend python backend/manage.py precompute_release_data
 docker compose up -d
 ```
 
@@ -99,10 +101,22 @@ scripts/publish_release_from_json.sh /path/to/openkinetics_release.json
 ```
 
 The script builds release files under `./releases`, generates missing sequence
-artifacts through the GPU service, imports the release as latest, and restarts
+artifacts through the GPU service, imports the release as latest, precomputes
+the release's stats, facets, and download stats in the database, and restarts
 the website. If `OPENKINETICS_RELEASES_HOST_DIR` is set, the script writes there
 instead. Set `GPU_EMBED_SERVICE_URL` and `GPU_EMBED_SERVICE_TOKEN` in the
 environment or pass `--gpu-service-url` and `--gpu-service-token`.
+
+To backfill the active release without re-importing it:
+
+```bash
+docker compose run --rm backend \
+  python backend/manage.py precompute_release_data
+```
+
+Use `--release-id RELEASE_ID` for one named release or `--all` for every
+release. Re-importing an existing release invalidates its previous payloads;
+the publish script regenerates them immediately after the import.
 
 The frontend container serves the React app, proxies `/api/`, `/admin/`, and
 `/sequence-artifacts/` to Django, and serves `/releases/` from the mounted

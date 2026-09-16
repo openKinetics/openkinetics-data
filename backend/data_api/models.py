@@ -11,6 +11,11 @@ class Release(models.Model):
     attribution = models.JSONField(default=dict, blank=True)
     source_sha256 = models.CharField(max_length=64, blank=True)
     is_latest = models.BooleanField(default=False)
+    precomputed_stats = models.JSONField(default=dict, blank=True)
+    precomputed_facets = models.JSONField(default=dict, blank=True)
+    precomputed_download_stats = models.JSONField(default=dict, blank=True)
+    precomputation_version = models.PositiveSmallIntegerField(default=0)
+    precomputed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
