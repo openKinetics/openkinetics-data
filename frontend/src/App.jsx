@@ -39,11 +39,16 @@ const realKcatBibtex = String.raw`@article{sajeevan2025robust,
   doi = {10.1101/2025.02.10.637555},
   url = {https://doi.org/10.1101/2025.02.10.637555}
 }`;
-const openKineticsBibtex = String.raw`@unpublished{alwer2026accessing,
+const openKineticsPreprintUrl = "https://www.biorxiv.org/content/10.64898/2026.09.25.751968v1";
+const openKineticsDoi = "10.64898/2026.09.25.751968";
+const openKineticsBibtex = String.raw`@article{alwer2026accessing,
   author = {Alwer, Saleh and Escoffier, Hugues and Taha, Karim and Boorla, Veda and Yu, Han and Santra, Somtirtha and Wang, Zechen and Egwu, Chidi and Osinuga, Abraham and Dey, Supantha and Srinivasan Raghunath, Vaishnavey and Zare, Farid and McGoldrick, Jack and Weder, Jan-Niklas and Kerkhoven, Eduard and Luo, Xiaozhou and Maranas, Costas D. and Zheng, Liangzhen and Wittig, Ulrike and Chowdhury, Ratul and Saha, Rajib and T{\"o}pfer, Nadine and Sauter, Thomas and Fleming, Ronan M. T.},
   title = {{Accessing Enzyme Kinetic Data and Prediction Methods at Scale}},
-  note = {Unpublished manuscript},
-  year = {2026}
+  journal = {bioRxiv},
+  year = {2026},
+  note = {Preprint},
+  doi = {${openKineticsDoi}},
+  url = {${openKineticsPreprintUrl}}
 }`;
 
 const reviewStatuses = {
@@ -1708,6 +1713,11 @@ function CitationPage() {
         <p>
           Data curated by CatLog collaborators, served by{" "}
           <a href={openKineticsUrl}>OpenKinetics</a>.
+        </p>
+        <p>
+          Alwer et al., Accessing Enzyme Kinetic Data and Prediction Methods at Scale,
+          bioRxiv 2026. Preprint:{" "}
+          <a href={openKineticsPreprintUrl}>{openKineticsPreprintUrl}</a>
         </p>
         <CitationBox
           label="OpenKinetics BibTeX"
