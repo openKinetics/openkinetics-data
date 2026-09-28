@@ -24,8 +24,8 @@ This data resource is built from CatLog, developed by the
 [Chowdhury Lab](https://chowdhurylab.github.io/) and collaborators. The full
 CatLog publication is coming soon. For now, please cite:
 
-Sajeevan et al., Robust Prediction of Enzyme Variant Kinetics with RealKcat,
-bioRxiv 2025, DOI: https://doi.org/10.1101/2025.02.10.637555
+Sajeevan et al., CatRange enables robust prediction of enzyme variant kinetic
+regimes, PNAS Nexus 2026, DOI: https://doi.org/10.1093/pnasnexus/pgag309
 
 CatLog static browser:
 https://chowdhurylab.github.io/tools/catlog-latest.html

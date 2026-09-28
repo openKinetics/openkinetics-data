@@ -29,15 +29,17 @@ import { useTheme } from "./context/ThemeContext.jsx";
 const catlogUrl = "https://chowdhurylab.github.io/tools/catlog-latest.html";
 const chowdhuryLabUrl = "https://chowdhurylab.github.io/";
 const openKineticsUrl = "https://openkinetics.org/";
-const realKcatDoi = "https://doi.org/10.1101/2025.02.10.637555";
-const realKcatBibtex = String.raw`@article{sajeevan2025robust,
-  author = {Sajeevan, Karuna Anna and Osinuga, Abraham and Arunraj, B and Ferdous, Sakib and Shahreen, Nabia and Noor, Mohammed Sakib and Koneru, Shashank and Santos-Correa, Laura Mariana and Salehi, Rahil and Chowdhury, Niaz Bahar and Aryee, Randy and Calderon-Lopez, Brisa and Mali, Ankur and Saha, Rajib and Chowdhury, Ratul},
-  title = {{Robust Prediction of Enzyme Variant Kinetics with RealKcat}},
-  journal = {bioRxiv},
-  year = {2025},
-  note = {Preprint},
-  doi = {10.1101/2025.02.10.637555},
-  url = {https://doi.org/10.1101/2025.02.10.637555}
+const catRangeDoi = "https://doi.org/10.1093/pnasnexus/pgag309";
+const catRangeBibtex = String.raw`@article{10.1093/pnasnexus/pgag309,
+  author = {Sajeevan, Karuna Anna and Osinuga, Abraham and Arunraj, B and Ferdous, Sakib and Shahreen, Nabia and Noor, Mohammed Sakib and Koneru, Shashank and Santos Correa, Laura Mariana and Salehi, Rahil and Chowdhury, Niaz Bahar and Aryee, Randy and Calderon-Lopez, Brisa and Dey, Supantha and Mali, Ankur and Saha, Rajib and Chowdhury, Ratul},
+  title = {{CatRange enables robust prediction of enzyme variant kinetic regimes}},
+  journal = {PNAS Nexus},
+  pages = {pgag309},
+  year = {2026},
+  month = {09},
+  issn = {2752-6542},
+  doi = {10.1093/pnasnexus/pgag309},
+  url = {https://doi.org/10.1093/pnasnexus/pgag309}
 }`;
 const openKineticsPreprintUrl = "https://www.biorxiv.org/content/10.64898/2026.09.25.751968v1";
 const openKineticsDoi = "10.64898/2026.09.25.751968";
@@ -354,13 +356,13 @@ function AttributionBanner() {
       <div>
         <strong>CatLog-powered data portal.</strong> This resource is built from CatLog, developed
         by the <a href={chowdhuryLabUrl}>Chowdhury Lab</a> and collaborators. The full CatLog paper
-        is coming soon; for now cite RealKcat.
+        is coming soon; for now cite CatRange.
       </div>
       <div className="banner-actions">
         <a href={catlogUrl}>
           CatLog <ExternalLink size={15} aria-hidden="true" />
         </a>
-        <a href={realKcatDoi}>
+        <a href={catRangeDoi}>
           DOI <ExternalLink size={15} aria-hidden="true" />
         </a>
       </div>
@@ -1698,13 +1700,13 @@ function CitationPage() {
         <div className="citation-subsection">
           <h3>Current Citation</h3>
           <p>
-            Sajeevan et al., Robust Prediction of Enzyme Variant Kinetics with RealKcat,
-            bioRxiv 2025. DOI: <a href={realKcatDoi}>{realKcatDoi}</a>
+            Sajeevan et al., CatRange enables robust prediction of enzyme variant kinetic
+            regimes, PNAS Nexus 2026. DOI: <a href={catRangeDoi}>{catRangeDoi}</a>
           </p>
           <CitationBox
-            label="RealKcat BibTeX"
-            citation={realKcatBibtex}
-            filename="realkcat.bib"
+            label="CatRange BibTeX"
+            citation={catRangeBibtex}
+            filename="catrange.bib"
           />
         </div>
       </section>

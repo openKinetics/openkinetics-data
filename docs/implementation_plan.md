@@ -8,9 +8,9 @@ kinetics data served by OpenKinetics. It is separate from
 vibe and link back to the predictor.
 
 The site must make CatLog attribution prominent. The full CatLog paper is
-coming soon; for now the site cites RealKcat:
+coming soon; for now the site cites CatRange:
 
-https://doi.org/10.1101/2025.02.10.637555
+https://doi.org/10.1093/pnasnexus/pgag309
 
 It also links to the [Chowdhury Lab](https://chowdhurylab.github.io/) CatLog browser:
 

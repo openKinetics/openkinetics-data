@@ -586,7 +586,7 @@ def build_manifest(args, source_sha256, candidates_count, datapoints):
         },
         "attribution": {
             "catlog": "Data curated by CatLog collaborators, served by OpenKinetics.",
-            "temporary_citation": "Sajeevan et al., Robust Prediction of Enzyme Variant Kinetics with RealKcat, bioRxiv 2025, DOI 10.1101/2025.02.10.637555.",
+            "temporary_citation": "Sajeevan et al., CatRange enables robust prediction of enzyme variant kinetic regimes, PNAS Nexus 2026, DOI 10.1093/pnasnexus/pgag309.",
             "redistribution_note": "Demo sample for data.openkinetics.org planning; confirm final CatLog redistribution/license terms before public release.",
         },
     }
